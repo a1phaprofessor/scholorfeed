@@ -1079,15 +1079,22 @@ async function loadNews() {
   if (cached === todayKey) {
     try {
       const cachedData = JSON.parse(localStorage.getItem('sf_cache_data') || '{}');
-      if (cachedData.articles?.length) {
+      if (cachedData.articles?.length > 0) {
         articlesData = cachedData.articles;
         vocabData    = cachedData.vocab || [];
         renderArticles();
         renderVocab();
         renderEmail();
         return;
+      } else {
+        // 快取是空的，清掉重新抓
+        localStorage.removeItem('sf_cache_date');
+        localStorage.removeItem('sf_cache_data');
       }
-    } catch(e) { /* cache corrupt, re-fetch */ }
+    } catch(e) {
+      localStorage.removeItem('sf_cache_date');
+      localStorage.removeItem('sf_cache_data');
+    }
   }
 
   const loadInterval = showLoading();
@@ -1153,16 +1160,28 @@ async function loadNews() {
 
     const data = await res.json();
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    // Strip any accidental markdown fences just in case
-    const clean = raw.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
-    const parsed = JSON.parse(clean);
+
+    // 強健的 JSON 解析：剝 markdown fence、找第一個 { 到最後一個 }
+    let parsed = {};
+    try {
+      let clean = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+      // 如果回傳的不是從 { 開始，找第一個 {
+      const start = clean.indexOf('{');
+      const end   = clean.lastIndexOf('}');
+      if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1);
+      parsed = JSON.parse(clean);
+    } catch(parseErr) {
+      throw new Error('JSON 解析失敗，請重試');
+    }
 
     articlesData = parsed.articles || [];
     vocabData    = parsed.vocab    || [];
 
-    // 存入當日快取
-    localStorage.setItem('sf_cache_date', todayKey);
-    localStorage.setItem('sf_cache_data', JSON.stringify({ articles: articlesData, vocab: vocabData }));
+    // 只有成功拿到文章才存快取，避免存空資料
+    if (articlesData.length > 0) {
+      localStorage.setItem('sf_cache_date', todayKey);
+      localStorage.setItem('sf_cache_data', JSON.stringify({ articles: articlesData, vocab: vocabData }));
+    }
 
     renderArticles();
     renderVocab();
