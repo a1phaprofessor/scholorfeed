@@ -1,0 +1,1389 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ScholarFeed — 每日學術新聞精選</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,400&family=Libre+Baskerville:wght@700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════
+   TOKENS & THEMES
+═══════════════════════════════════════════════ */
+:root {
+  --bg:      #F5F0E8;
+  --bg2:     #EDE8DC;
+  --bg3:     #E3DDD2;
+  --ink:     #1A1714;
+  --ink2:    #4A4540;
+  --ink3:    #8A8278;
+  --accent:  #C8380A;
+  --accent2: #1B4F8A;
+  --gold:    #C9960C;
+  --border:  rgba(26,23,20,0.13);
+  --serif:   'DM Serif Display', Georgia, serif;
+  --fran:    'Fraunces', Georgia, serif;
+  --mono:    'DM Mono', 'Courier New', monospace;
+  --sans:    system-ui, -apple-system, sans-serif;
+  --radius:  2px;
+  --bar-h:   4px;
+  --top-h:   52px;
+  --cat-h:   40px;
+}
+
+/* ── Themes ── */
+[data-theme="bauhaus"] {
+  --bg:#F5F0E8; --bg2:#EDE8DC; --bg3:#E3DDD2;
+  --ink:#1A1714; --ink2:#4A4540; --ink3:#8A8278;
+  --accent:#C8380A; --accent2:#1B4F8A; --gold:#C9960C;
+  --border:rgba(26,23,20,0.13);
+}
+[data-theme="brutalist"] {
+  --bg:#FFFFFF; --bg2:#F2F2F2; --bg3:#E5E5E5;
+  --ink:#000000; --ink2:#2A2A2A; --ink3:#888888;
+  --accent:#FF0000; --accent2:#0000EE; --gold:#CCAA00;
+  --border:rgba(0,0,0,0.18);
+}
+[data-theme="editorial"] {
+  --bg:#FAFAF6; --bg2:#F3F3EC; --bg3:#E9E9E0;
+  --ink:#1C1C1A; --ink2:#4C4C48; --ink3:#909088;
+  --accent:#7A1818; --accent2:#2A4A7C; --gold:#9A7400;
+  --border:rgba(28,28,26,0.11);
+}
+[data-theme="mingei"] {
+  --bg:#F7F3EC; --bg2:#EEE8DE; --bg3:#E2DAD0;
+  --ink:#2C2018; --ink2:#5C4A38; --ink3:#907A68;
+  --accent:#8A3828; --accent2:#3A6B48; --gold:#B8860B;
+  --border:rgba(44,32,24,0.13);
+}
+[data-theme="deco"] {
+  --bg:#FAF6ED; --bg2:#F1EAE0; --bg3:#E5DDD0;
+  --ink:#1C1408; --ink2:#3C3020; --ink3:#806A50;
+  --accent:#A07010; --accent2:#1A3A5C; --gold:#C8A420;
+  --border:rgba(28,20,8,0.13);
+}
+
+/* ── Dark mode ── */
+.dark {
+  --bg:#0F0E0B; --bg2:#1A1916; --bg3:#232119;
+  --ink:#F0EBE0; --ink2:#B8B0A0; --ink3:#706860;
+  --border:rgba(240,235,224,0.09);
+}
+
+/* ═══════════════════════════════════════════════
+   BASE RESET
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  line-height: 1.6;
+  transition: background .3s, color .3s;
+  min-height: 100vh;
+}
+button { cursor: pointer; font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+input { font-family: inherit; }
+
+/* ═══════════════════════════════════════════════
+   COLOUR BAR
+═══════════════════════════════════════════════ */
+.colour-bar {
+  height: var(--bar-h);
+  background: linear-gradient(to right,
+    var(--accent) 0%      33.33%,
+    var(--gold)   33.33%  66.66%,
+    var(--accent2) 66.66% 100%);
+}
+
+/* ═══════════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════════ */
+.topbar {
+  height: var(--top-h);
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1.5px solid var(--ink);
+  background: var(--bg);
+  position: sticky;
+  top: var(--bar-h);
+  z-index: 100;
+}
+.tb-logo {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 20px;
+  border-right: 1.5px solid var(--ink);
+  white-space: nowrap;
+}
+.logo-mark {
+  position: relative;
+  width: 34px; height: 34px;
+  flex-shrink: 0;
+}
+.logo-mark .sq1 {
+  position: absolute; top: 2px; left: 0;
+  width: 20px; height: 20px;
+  background: var(--ink);
+}
+.logo-mark .sq2 {
+  position: absolute; top: 14px; left: 12px;
+  width: 16px; height: 16px;
+  background: var(--accent);
+}
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+  gap: 2px;
+}
+.logo-text .lt1 {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+}
+.logo-text .lt2 {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+}
+.tb-date {
+  display: flex; align-items: center;
+  padding: 0 18px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink3);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+.tb-themes {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 18px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tb-themes::-webkit-scrollbar { display: none; }
+.theme-lbl {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  white-space: nowrap;
+}
+.theme-chips { display: flex; gap: 5px; }
+.tchip {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .05em;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink2);
+  transition: all .15s;
+  white-space: nowrap;
+}
+.tchip:hover { border-color: var(--ink2); color: var(--ink); background: var(--bg2); }
+.tchip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tb-right {
+  display: flex; align-items: center; gap: 0;
+  border-left: 1.5px solid var(--ink);
+  margin-left: auto;
+}
+.icon-btn {
+  width: 44px; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: transparent;
+  color: var(--ink);
+  font-size: 16px;
+  border-left: 1px solid var(--border);
+  transition: background .15s;
+}
+.icon-btn:first-child { border-left: none; }
+.icon-btn:hover { background: var(--bg2); }
+
+/* ═══════════════════════════════════════════════
+   CATEGORY STRIP
+═══════════════════════════════════════════════ */
+.cat-strip {
+  height: var(--cat-h);
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  position: sticky;
+  top: calc(var(--bar-h) + var(--top-h));
+  z-index: 99;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cat-strip::-webkit-scrollbar { display: none; }
+.citem {
+  display: flex; align-items: center;
+  padding: 0 18px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  border-right: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+  position: relative;
+}
+.citem:hover { color: var(--ink); background: var(--bg2); }
+.citem.active {
+  color: var(--bg);
+  background: var(--ink);
+}
+.citem.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--accent);
+}
+.citem-add { color: var(--accent2); }
+.citem-add:hover { color: var(--accent2); }
+
+/* ═══════════════════════════════════════════════
+   MAIN LAYOUT
+═══════════════════════════════════════════════ */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 330px;
+  min-height: calc(100vh - var(--bar-h) - var(--top-h) - var(--cat-h));
+  align-items: start;
+}
+.main-col {
+  border-right: 1px solid var(--border);
+}
+.side-col {
+  position: sticky;
+  top: calc(var(--bar-h) + var(--top-h) + var(--cat-h));
+  height: calc(100vh - var(--bar-h) - var(--top-h) - var(--cat-h));
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+/* ═══════════════════════════════════════════════
+   LOADING STATE
+═══════════════════════════════════════════════ */
+.loading-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 40px;
+  gap: 20px;
+}
+.loading-logo {
+  position: relative;
+  width: 40px; height: 40px;
+  animation: pulse-mark 1.4s ease-in-out infinite;
+}
+.loading-logo .sq1 {
+  position: absolute; top: 3px; left: 0;
+  width: 26px; height: 26px;
+  background: var(--ink);
+}
+.loading-logo .sq2 {
+  position: absolute; top: 18px; left: 16px;
+  width: 20px; height: 20px;
+  background: var(--accent);
+}
+@keyframes pulse-mark {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.loading-title {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: 0.14em;
+}
+.loading-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 280px;
+}
+.lstep {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink3);
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity .4s, transform .4s;
+}
+.lstep.active { opacity: 1; transform: none; color: var(--ink2); }
+.lstep.done { opacity: .5; }
+.lstep-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+  transition: background .3s;
+}
+.lstep.active .lstep-dot { background: var(--accent); animation: pulse-dot 1s ease infinite; }
+.lstep.done .lstep-dot { background: var(--gold); animation: none; }
+@keyframes pulse-dot { 0%,100%{transform:scale(1)} 50%{transform:scale(1.5)} }
+
+/* ═══════════════════════════════════════════════
+   HERO ARTICLE
+═══════════════════════════════════════════════ */
+.hero {
+  padding: 28px 28px 22px;
+  border-bottom: 1px solid var(--border);
+  animation: fadeUp .5s ease both;
+}
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:none; }
+}
+.hero-eyebrow {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 13px;
+  flex-wrap: wrap;
+}
+.cat-tag {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border: 1px solid currentColor;
+}
+.hot-tag {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 2px 7px;
+  letter-spacing: .05em;
+  animation: blink-border 2s ease infinite;
+}
+@keyframes blink-border {
+  0%,100%{border-color:var(--accent)} 50%{border-color:transparent}
+}
+.src-tag {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink3);
+  margin-left: auto;
+}
+.hero-title {
+  font-family: var(--fran);
+  font-size: 29px;
+  font-weight: 600;
+  line-height: 1.18;
+  color: var(--ink);
+  margin-bottom: 11px;
+  letter-spacing: -.03em;
+}
+.hero-title em { color: var(--accent); font-style: italic; font-weight: 400; }
+.hero-zh {
+  font-size: 13px;
+  color: var(--ink2);
+  line-height: 1.65;
+  padding-left: 12px;
+  border-left: 2.5px solid var(--accent);
+  margin-bottom: 16px;
+}
+.summary-box {
+  background: var(--bg2);
+  border-left: 3px solid var(--accent2);
+  padding: 13px 16px;
+  margin-bottom: 14px;
+}
+.summary-box p {
+  font-size: 12.5px;
+  line-height: 1.78;
+  color: var(--ink2);
+}
+.summary-box strong { color: var(--ink); font-weight: 500; }
+.hero-meta {
+  display: flex; align-items: center; gap: 7px;
+  flex-wrap: wrap;
+}
+.mpill {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  color: var(--ink3);
+}
+.mpill.ok   { border-color: var(--gold); color: var(--gold); }
+.mpill.warn { border-color: var(--accent); color: var(--accent); }
+.expand-btn {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .07em;
+  padding: 4px 13px;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  transition: opacity .15s;
+}
+.expand-btn:hover { opacity: .75; }
+.hero-expanded {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .4s ease, padding .3s;
+  padding: 0 0;
+}
+.hero-expanded.open {
+  max-height: 600px;
+  padding: 18px 0 0;
+}
+.exp-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.exp-block { margin-bottom: 14px; }
+.exp-lbl {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-bottom: 5px;
+}
+.exp-text {
+  font-size: 12.5px;
+  line-height: 1.75;
+  color: var(--ink2);
+}
+.exp-quote {
+  font-family: var(--fran);
+  font-style: italic;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--ink);
+  padding: 9px 14px;
+  border-left: 2.5px solid var(--accent2);
+  background: var(--bg2);
+  margin: 6px 0;
+}
+.doi-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--accent2);
+  border-bottom: 1px solid var(--accent2);
+}
+
+/* ═══════════════════════════════════════════════
+   ARTICLE LIST
+═══════════════════════════════════════════════ */
+.article-list {}
+.article-item {
+  display: grid;
+  grid-template-columns: 3px 1fr;
+  gap: 0 14px;
+  padding: 15px 28px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .12s;
+  animation: fadeUp .4s ease both;
+}
+.article-item:nth-child(2) { animation-delay: .05s; }
+.article-item:nth-child(3) { animation-delay: .10s; }
+.article-item:nth-child(4) { animation-delay: .15s; }
+.article-item:nth-child(5) { animation-delay: .20s; }
+.article-item:hover { background: var(--bg2); }
+.ai-bar { background: var(--border); transition: background .12s; }
+.article-item:hover .ai-bar { background: var(--accent2); }
+.ai-eyebrow {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 4px;
+}
+.ai-cat {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.ai-src {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink3);
+  margin-left: auto;
+}
+.ai-title {
+  font-family: var(--fran);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.32;
+  color: var(--ink);
+  margin-bottom: 4px;
+  letter-spacing: -.01em;
+}
+.ai-zh {
+  font-size: 11.5px;
+  color: var(--ink3);
+  line-height: 1.5;
+  margin-bottom: 6px;
+}
+.ai-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.ai-pill {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  color: var(--ink3);
+}
+.ai-pill.hot { border-color: var(--accent); color: var(--accent); }
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR — VOCAB
+═══════════════════════════════════════════════ */
+.side-hd {
+  padding: 10px 16px;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  border-bottom: 1px solid var(--border);
+  background: var(--bg2);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.side-count {
+  color: var(--gold);
+  font-weight: 500;
+}
+.vocab-item {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  animation: fadeUp .4s ease both;
+}
+.vocab-item:nth-child(2) { animation-delay:.08s; }
+.vocab-item:nth-child(3) { animation-delay:.16s; }
+.vocab-item:nth-child(4) { animation-delay:.24s; }
+.v-top {
+  display: flex; align-items: baseline; gap: 6px;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
+}
+.vword {
+  font-family: var(--fran);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -.01em;
+}
+.vpos {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  color: var(--ink3);
+}
+.vlvl {
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 1px 5px;
+  border: 1px solid var(--gold);
+  color: var(--gold);
+}
+.vdef {
+  font-size: 11.5px;
+  color: var(--ink2);
+  line-height: 1.62;
+  margin-bottom: 5px;
+}
+.vcolloc {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink3);
+  margin-bottom: 5px;
+  line-height: 1.5;
+}
+.vcolloc strong { color: var(--ink2); font-weight: 500; }
+.vex {
+  font-size: 10.5px;
+  font-style: italic;
+  color: var(--ink3);
+  padding: 5px 9px;
+  border-left: 2px solid var(--border);
+  background: var(--bg2);
+  line-height: 1.55;
+}
+.vex span {
+  display: block;
+  font-style: normal;
+  color: var(--ink3);
+  font-size: 9.5px;
+  font-family: var(--mono);
+  margin-top: 2px;
+}
+
+/* ═══════════════════════════════════════════════
+   SIDEBAR — EMAIL
+═══════════════════════════════════════════════ */
+.email-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.email-section p {
+  font-size: 11.5px;
+  color: var(--ink2);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.email-row { display: flex; gap: 5px; }
+.email-input {
+  flex: 1;
+  padding: 7px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  outline: none;
+  transition: border-color .15s;
+}
+.email-input:focus { border-color: var(--ink2); }
+.email-submit {
+  padding: 7px 13px;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .06em;
+  transition: opacity .15s;
+}
+.email-submit:hover { opacity: .75; }
+.email-success {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--gold);
+  display: none;
+  margin-top: 6px;
+}
+
+/* ═══════════════════════════════════════════════
+   ERROR STATE
+═══════════════════════════════════════════════ */
+.error-box {
+  padding: 32px 28px;
+  border-bottom: 1px solid var(--border);
+}
+.error-box h3 {
+  font-family: var(--serif);
+  font-size: 18px;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.error-box p {
+  font-size: 12.5px;
+  color: var(--ink2);
+  line-height: 1.7;
+  margin-bottom: 12px;
+}
+.error-box code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--bg2);
+  padding: 2px 6px;
+}
+.retry-btn {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .07em;
+  padding: 6px 16px;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  margin-top: 4px;
+}
+.retry-btn:hover { opacity: .75; }
+
+/* ═══════════════════════════════════════════════
+   API KEY SETUP
+═══════════════════════════════════════════════ */
+.setup-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.setup-card {
+  width: 100%;
+  max-width: 480px;
+  border: 1.5px solid var(--ink);
+  padding: 0;
+}
+.setup-header {
+  padding: 20px 24px;
+  border-bottom: 1.5px solid var(--ink);
+  display: flex; align-items: center; gap: 12px;
+}
+.setup-body { padding: 24px; }
+.setup-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  letter-spacing: -.02em;
+}
+.setup-body p {
+  font-size: 12.5px;
+  color: var(--ink2);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+.setup-body p a { color: var(--accent2); border-bottom: 1px solid var(--accent2); }
+.setup-field { margin-bottom: 14px; }
+.setup-label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink3);
+  margin-bottom: 5px;
+}
+.setup-input {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 11px;
+  outline: none;
+  transition: border-color .15s;
+}
+.setup-input:focus { border-color: var(--ink); }
+.setup-hint {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  color: var(--ink3);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.setup-btn {
+  width: 100%;
+  padding: 10px;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  margin-top: 6px;
+  transition: opacity .15s;
+}
+.setup-btn:hover { opacity: .75; }
+.setup-note {
+  font-size: 10.5px;
+  color: var(--ink3);
+  margin-top: 12px !important;
+  margin-bottom: 0 !important;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .side-col {
+    position: static; height: auto;
+    border-top: 2px solid var(--ink);
+  }
+  .hero-title { font-size: 22px; }
+  .hero { padding: 20px 16px; }
+  .article-item { padding: 14px 16px; }
+}
+
+/* ═══════════════════════════════════════════════
+   SKELETON LOADER
+═══════════════════════════════════════════════ */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skel {
+  background: linear-gradient(90deg, var(--bg2) 25%, var(--bg3) 50%, var(--bg2) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 2px;
+}
+.skel-hero {
+  height: 200px; width: 100%;
+  margin-bottom: 12px;
+}
+.skel-line {
+  height: 12px; width: 100%;
+  margin-bottom: 8px;
+}
+.skel-line.short { width: 60%; }
+</style>
+</head>
+<body>
+
+<!-- API KEY SETUP OVERLAY -->
+<div class="setup-overlay" id="setup-overlay">
+  <div class="setup-card" data-theme="bauhaus">
+    <div class="setup-header">
+      <div class="logo-mark" style="width:28px;height:28px"><div class="sq1" style="width:16px;height:16px;top:2px"></div><div class="sq2" style="width:13px;height:13px;top:11px;left:10px"></div></div>
+      <span class="setup-title">ScholarFeed 設定</span>
+    </div>
+    <div class="setup-body">
+      <p>輸入你的 <strong>Gemini API Key</strong> 來啟動每日新聞摘要與英文學習功能。<strong>完全免費，不需要信用卡。</strong> API key 僅存在你的瀏覽器本機，不會上傳任何伺服器。</p>
+      <div class="setup-field">
+        <label class="setup-label">Gemini API Key（免費）</label>
+        <input class="setup-input" type="password" id="api-key-input" placeholder="AIzaSy..." autocomplete="off">
+        <div class="setup-hint">
+          前往 <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent2);border-bottom:1px solid">aistudio.google.com/apikey</a> 免費取得，不需信用卡。
+          格式：<code style="font-family:var(--mono);font-size:10px;background:var(--bg3);padding:1px 4px">AIzaSy...</code>
+        </div>
+      </div>
+      <div class="setup-field">
+        <label class="setup-label">預設主題</label>
+        <select class="setup-input" id="default-theme-select">
+          <option value="bauhaus">Bauhaus — 幾何現代</option>
+          <option value="editorial">Editorial — 雜誌感</option>
+          <option value="brutalist">Brutalist — 原始衝擊</option>
+          <option value="mingei">Mingei — 日本工藝</option>
+          <option value="deco">Art Déco — 金色典雅</option>
+        </select>
+      </div>
+      <button class="setup-btn" onclick="saveSetup()">▶ 開始使用 ScholarFeed</button>
+      <p class="setup-note">完全免費：Gemini 2.0 Flash 免費方案每天 1,500 次請求，ScholarFeed 每天只用 1 次，永遠不會超額。Key 存於 <code style="font-family:var(--mono);font-size:10px;background:var(--bg3);padding:1px 4px">localStorage</code>，隨時可在設定中更換。</p>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" data-theme="bauhaus">
+  <div class="colour-bar"></div>
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="tb-logo">
+      <div class="logo-mark"><div class="sq1"></div><div class="sq2"></div></div>
+      <div class="logo-text"><span class="lt1">SCHOLAR</span><span class="lt2">FEED</span></div>
+    </div>
+    <div class="tb-date" id="tb-date">— —</div>
+    <div class="tb-themes">
+      <span class="theme-lbl">Theme</span>
+      <div class="theme-chips" id="theme-chips">
+        <button class="tchip active" onclick="setTheme('bauhaus',this)">Bauhaus</button>
+        <button class="tchip" onclick="setTheme('editorial',this)">Editorial</button>
+        <button class="tchip" onclick="setTheme('brutalist',this)">Brutalist</button>
+        <button class="tchip" onclick="setTheme('mingei',this)">Mingei</button>
+        <button class="tchip" onclick="setTheme('deco',this)">Art Déco</button>
+      </div>
+    </div>
+    <div class="tb-right">
+      <button class="icon-btn" onclick="toggleDark()" title="深/淺色模式">◑</button>
+      <button class="icon-btn" onclick="openSetup()" title="設定 API Key">⚙</button>
+      <button class="icon-btn" onclick="refresh()" title="重新整理">↺</button>
+    </div>
+  </div>
+
+  <!-- Category strip -->
+  <div class="cat-strip" id="cat-strip">
+    <div class="citem active" data-cat="all" onclick="filterCat(this)">全部</div>
+    <div class="citem" data-cat="finance" onclick="filterCat(this)">💹 財經</div>
+    <div class="citem" data-cat="politics" onclick="filterCat(this)">🏛 政治</div>
+    <div class="citem" data-cat="medicine" onclick="filterCat(this)">🔬 醫學</div>
+    <div class="citem" data-cat="space" onclick="filterCat(this)">🔭 天文</div>
+    <div class="citem" data-cat="tech" onclick="filterCat(this)">⚙️ 科技</div>
+    <div class="citem" data-cat="environment" onclick="filterCat(this)">🌍 環境</div>
+  </div>
+
+  <!-- Layout -->
+  <div class="layout">
+    <div class="main-col" id="main-col">
+      <!-- content injected by JS -->
+    </div>
+    <div class="side-col" id="side-col">
+      <!-- content injected by JS -->
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   STATE
+════════════════════════════════════════════ */
+let isDark = false;
+let currentCat = 'all';
+let articlesData = [];
+let vocabData = [];
+
+/* ════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  updateDate();
+  const key = localStorage.getItem('sf_api_key');
+  const theme = localStorage.getItem('sf_theme') || 'bauhaus';
+  const dark = localStorage.getItem('sf_dark') === '1';
+
+  setThemeByName(theme);
+  if (dark) { isDark = true; document.getElementById('app').classList.add('dark'); }
+
+  if (!key) {
+    document.getElementById('setup-overlay').style.display = 'flex';
+  } else {
+    document.getElementById('setup-overlay').style.display = 'none';
+    loadNews();
+  }
+});
+
+function updateDate() {
+  const d = new Date();
+  const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  document.getElementById('tb-date').textContent =
+    `${days[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}.${months[d.getMonth()]}.${d.getFullYear()} — DAILY EDITION`;
+}
+
+/* ════════════════════════════════════════════
+   SETUP
+════════════════════════════════════════════ */
+function saveSetup() {
+  const key = document.getElementById('api-key-input').value.trim();
+  const theme = document.getElementById('default-theme-select').value;
+  if (!key || !key.startsWith('AIza')) {
+    document.getElementById('api-key-input').style.borderColor = 'var(--accent)';
+    document.getElementById('api-key-input').placeholder = '格式應為 AIzaSy... 請重新輸入';
+    return;
+  }
+  localStorage.setItem('sf_api_key', key);
+  localStorage.setItem('sf_theme', theme);
+  document.getElementById('setup-overlay').style.display = 'none';
+  setThemeByName(theme);
+  loadNews();
+}
+
+function openSetup() {
+  document.getElementById('api-key-input').value = localStorage.getItem('sf_api_key') || '';
+  document.getElementById('setup-overlay').style.display = 'flex';
+}
+
+/* ════════════════════════════════════════════
+   THEME / DARK MODE
+════════════════════════════════════════════ */
+function setThemeByName(name) {
+  document.getElementById('app').setAttribute('data-theme', name);
+  document.querySelectorAll('.tchip').forEach(b => {
+    b.classList.toggle('active', b.textContent.toLowerCase().includes(name) ||
+      (name === 'deco' && b.textContent.includes('Déco')) ||
+      (name === 'bauhaus' && b.textContent === 'Bauhaus') );
+  });
+}
+
+function setTheme(name, btn) {
+  document.getElementById('app').setAttribute('data-theme', name);
+  document.querySelectorAll('.tchip').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  localStorage.setItem('sf_theme', name);
+}
+
+function toggleDark() {
+  isDark = !isDark;
+  document.getElementById('app').classList.toggle('dark', isDark);
+  localStorage.setItem('sf_dark', isDark ? '1' : '0');
+}
+
+/* ════════════════════════════════════════════
+   FILTER
+════════════════════════════════════════════ */
+function filterCat(el) {
+  document.querySelectorAll('.citem').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  currentCat = el.dataset.cat;
+  renderArticles();
+}
+
+/* ════════════════════════════════════════════
+   LOADING UI
+════════════════════════════════════════════ */
+const STEPS = [
+  '搜尋今日主流學術與新聞媒體…',
+  '篩選討論度最高的文章…',
+  '生成雙語摘要與學術分析…',
+  '萃取英文詞彙與搭配詞…',
+  '整理版面，準備呈現…',
+];
+
+function showLoading() {
+  const main = document.getElementById('main-col');
+  main.innerHTML = `
+    <div class="loading-screen">
+      <div class="loading-logo"><div class="sq1"></div><div class="sq2"></div></div>
+      <div class="loading-title">正在為你整理今日要聞</div>
+      <div class="loading-steps" id="loading-steps">
+        ${STEPS.map((s,i) => `
+          <div class="lstep" id="lstep-${i}">
+            <div class="lstep-dot"></div>
+            <span>${s}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  document.getElementById('side-col').innerHTML = `
+    <div class="side-hd"><span>英文學習</span></div>
+    <div style="padding:20px 16px">
+      <div class="skel skel-line" style="margin-bottom:16px"></div>
+      <div class="skel skel-line short"></div>
+      <div class="skel skel-line"></div>
+      <div class="skel skel-line short" style="margin-top:16px"></div>
+    </div>`;
+
+  let step = 0;
+  const interval = setInterval(() => {
+    if (step > 0) document.getElementById(`lstep-${step-1}`)?.classList.replace('active','done');
+    if (step < STEPS.length) {
+      document.getElementById(`lstep-${step}`)?.classList.add('active');
+      step++;
+    } else {
+      clearInterval(interval);
+    }
+  }, 900);
+  return interval;
+}
+
+/* ════════════════════════════════════════════
+   CLAUDE API CALL
+════════════════════════════════════════════ */
+async function loadNews() {
+  const apiKey = localStorage.getItem('sf_api_key');
+  if (!apiKey) return;
+
+  // ── 每日快取：同一天不重複呼叫 API ──
+  const todayKey = new Date().toISOString().slice(0, 10); // e.g. "2026-03-14"
+  const cached = localStorage.getItem('sf_cache_date');
+  if (cached === todayKey) {
+    try {
+      const cachedData = JSON.parse(localStorage.getItem('sf_cache_data') || '{}');
+      if (cachedData.articles?.length) {
+        articlesData = cachedData.articles;
+        vocabData    = cachedData.vocab || [];
+        renderArticles();
+        renderVocab();
+        renderEmail();
+        return;
+      }
+    } catch(e) { /* cache corrupt, re-fetch */ }
+  }
+
+  const loadInterval = showLoading();
+
+  const today = new Date().toLocaleDateString('zh-TW', { year:'numeric', month:'long', day:'numeric' });
+
+  const prompt = `你是一位每日學術新聞編輯。今天是 ${today}。
+
+請為我生成今日 8 篇重要新聞文章的內容，涵蓋以下分類：財經(finance)、政治(politics)、醫學(medicine)、天文(space)、科技(tech)、環境(environment)。
+
+每篇文章請包含：
+- 真實可信的英文標題（像真正的學術媒體或嚴肅媒體那樣）
+- 中文副標題（精確翻譯+補充）
+- 分類 category（英文小寫：finance/politics/medicine/space/tech/environment）
+- 來源 source（如 Nature, Science, WSJ, The Economist, Reuters, Financial Times, The Lancet 等）
+- 幾天前 daysAgo（數字）
+- 是否高討論度 hot（true/false）
+- 學術摘要 summary（繁體中文，3句，包含研究方法、發現、意義）
+- 原文節錄 quote（英文，20-35字，像真實原文那樣）
+- 學術討論焦點 discussion（繁體中文，2句）
+- 方法學標籤 pills（陣列，2-4個，如 "RCT", "n = 44,000", "同儕審查", "⚠ 相關性非因果"）
+- DOI或連結描述 doi（如 "Nature Vol.31 (2025)" 或 "The Economist, Mar 2026"）
+
+同時請生成今日 5 個英文詞彙，從上述文章中自然出現：
+- word（詞彙）
+- pos（詞性+學科，如 "n. · 藥理"）
+- level（B2/C1/C2）
+- def（繁體中文定義，1-2句）
+- collocations（2-3個常見搭配詞，英文，array）
+- example（英文例句，來自文章語境，20-30字）
+- exampleZh（例句中文翻譯）
+- source（來自哪篇文章的來源名）
+
+只回傳純 JSON，不要有任何說明文字、markdown 語法或程式碼區塊，格式如下：
+{"articles":[{"id":1,"title":"...","titleZh":"...","category":"medicine","source":"Nature Medicine","daysAgo":1,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["同儕審查","n = 88,000"],"doi":"Nature Medicine Vol.31 (2026)"}],"vocab":[{"word":"agonist","pos":"n. · 藥理","level":"C1","def":"...","collocations":["receptor agonist","partial agonist"],"example":"...","exampleZh":"...","source":"Nature Medicine"}]}`;
+
+  try {
+    const GEMINI_MODEL = 'gemini-2.0-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.8,
+          maxOutputTokens: 4000,
+          responseMimeType: 'application/json',
+        }
+      })
+    });
+
+    clearInterval(loadInterval);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = err.error?.message || `HTTP ${res.status}`;
+      if (res.status === 400 || res.status === 403) throw new Error('KEY_INVALID');
+      if (res.status === 429) throw new Error('RATE_LIMIT');
+      throw new Error(`HTTP_${res.status}`);
+    }
+
+    const data = await res.json();
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    // Strip any accidental markdown fences just in case
+    const clean = raw.replace(/^```json\s*/,'').replace(/\s*```$/,'').trim();
+    const parsed = JSON.parse(clean);
+
+    articlesData = parsed.articles || [];
+    vocabData    = parsed.vocab    || [];
+
+    // 存入當日快取
+    localStorage.setItem('sf_cache_date', todayKey);
+    localStorage.setItem('sf_cache_data', JSON.stringify({ articles: articlesData, vocab: vocabData }));
+
+    renderArticles();
+    renderVocab();
+    renderEmail();
+
+  } catch (e) {
+    clearInterval(loadInterval);
+
+    const isRateLimit  = e.message === 'RATE_LIMIT';
+    const isKeyInvalid = e.message === 'KEY_INVALID';
+
+    const title = isKeyInvalid ? 'API Key 無效'
+                : isRateLimit  ? '請稍候片刻'
+                :                '無法載入今日新聞';
+
+    const body = isKeyInvalid
+      ? `Key 格式或權限有問題，請確認 Key 開頭為 <code>AIzaSy...</code> 且在 AI Studio 中為啟用狀態。`
+      : isRateLimit
+      ? `<strong>剛建立的 Key 需要 1–2 分鐘才能生效</strong>，這是 Google 的正常傳播延遲，不是額度用完。<br>
+         <span id="countdown-msg" style="color:var(--gold)">將在 <span id="countdown">60</span> 秒後自動重試…</span>`
+      : `發生未預期的錯誤（${e.message}），請重試。`;
+
+    document.getElementById('main-col').innerHTML = `
+      <div class="error-box">
+        <h3>${title}</h3>
+        <p>${body}</p>
+        <p style="margin-top:8px;font-size:11px;color:var(--ink3)">
+          Key 管理頁面：
+          <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent2)">aistudio.google.com/apikey</a>
+        </p>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="retry-btn" id="retry-now-btn" onclick="refresh()">↺ 立即重試</button>
+          <button class="retry-btn" style="background:var(--bg2);color:var(--ink);border:1px solid var(--border)" onclick="openSetup()">⚙ 更換 API Key</button>
+        </div>
+      </div>`;
+
+    // 429 自動倒數重試
+    if (isRateLimit) {
+      let secs = 60;
+      const tick = setInterval(() => {
+        secs--;
+        const el = document.getElementById('countdown');
+        if (el) el.textContent = secs;
+        if (secs <= 0) {
+          clearInterval(tick);
+          const msg = document.getElementById('countdown-msg');
+          if (msg) msg.textContent = '正在重新嘗試…';
+          refresh();
+        }
+      }, 1000);
+    }
+  }
+}
+
+function refresh() { loadNews(); }
+
+/* ════════════════════════════════════════════
+   RENDER ARTICLES
+════════════════════════════════════════════ */
+const CAT_COLORS = {
+  finance:     'var(--gold)',
+  politics:    'var(--accent2)',
+  medicine:    'var(--accent2)',
+  space:       '#534AB7',
+  tech:        'var(--ink2)',
+  environment: 'var(--accent)',
+};
+const CAT_LABELS = {
+  finance:'💹 Finance', politics:'🏛 Politics', medicine:'🔬 Medicine',
+  space:'🔭 Astronomy', tech:'⚙️ Tech', environment:'🌍 Environment',
+};
+
+function renderArticles() {
+  const filtered = currentCat === 'all'
+    ? articlesData
+    : articlesData.filter(a => a.category === currentCat);
+
+  if (!filtered.length) {
+    document.getElementById('main-col').innerHTML =
+      `<div style="padding:40px 28px;font-family:var(--mono);font-size:11px;color:var(--ink3)">此分類今日暫無文章</div>`;
+    return;
+  }
+
+  const hero = filtered[0];
+  const rest  = filtered.slice(1);
+
+  const heroHTML = `
+    <div class="hero">
+      <div class="hero-eyebrow">
+        <span class="cat-tag" style="color:${CAT_COLORS[hero.category]};border-color:${CAT_COLORS[hero.category]}">
+          ${CAT_LABELS[hero.category] || hero.category}
+        </span>
+        ${hero.hot ? '<span class="hot-tag">▲ HIGH IMPACT</span>' : ''}
+        <span class="src-tag">${hero.source} · ${hero.daysAgo === 0 ? 'Today' : hero.daysAgo + 'd ago'}</span>
+      </div>
+      <h1 class="hero-title">${hero.title}</h1>
+      <p class="hero-zh">${hero.titleZh}</p>
+      <div class="summary-box">
+        <p><strong>學術摘要：</strong>${hero.summary}</p>
+      </div>
+      <div class="hero-meta">
+        ${(hero.pills||[]).map((p,i) =>
+          `<span class="mpill ${i===hero.pills.length-1 && p.includes('⚠') ? 'warn' : i===0 ? 'ok' : ''}">${p}</span>`
+        ).join('')}
+        <button class="expand-btn" id="hero-btn" onclick="toggleHero()">EXPAND ↓</button>
+      </div>
+      <div class="hero-expanded" id="hero-expanded">
+        <hr class="exp-divider">
+        <div class="exp-block">
+          <div class="exp-lbl">原文節錄</div>
+          <div class="exp-quote">"${hero.quote}"</div>
+        </div>
+        <div class="exp-block">
+          <div class="exp-lbl">學術討論焦點</div>
+          <div class="exp-text">${hero.discussion}</div>
+        </div>
+        <a class="doi-link" href="#" onclick="return false">DOI → ${hero.doi}</a>
+      </div>
+    </div>`;
+
+  const listHTML = rest.map(a => `
+    <div class="article-item" onclick="expandArticle(this,${a.id})">
+      <div class="ai-bar"></div>
+      <div>
+        <div class="ai-eyebrow">
+          <span class="ai-cat" style="color:${CAT_COLORS[a.category]}">${CAT_LABELS[a.category]||a.category}</span>
+          <span class="ai-src">${a.source} · ${a.daysAgo===0?'Today':a.daysAgo+'d'}</span>
+        </div>
+        <div class="ai-title">${a.title}</div>
+        <div class="ai-zh">${a.titleZh}</div>
+        <div class="ai-tags">
+          ${a.hot ? '<span class="ai-pill hot">▲ 高討論</span>' : ''}
+          ${(a.pills||[]).slice(0,2).map(p=>`<span class="ai-pill">${p}</span>`).join('')}
+        </div>
+        <div class="article-expanded" id="aexp-${a.id}" style="display:none;padding-top:10px;border-top:1px solid var(--border);margin-top:10px">
+          <div class="summary-box" style="margin-bottom:10px">
+            <p><strong>學術摘要：</strong>${a.summary}</p>
+          </div>
+          <div class="exp-quote" style="margin-bottom:8px">"${a.quote}"</div>
+          <div class="exp-text" style="margin-bottom:8px;font-size:12px">${a.discussion}</div>
+          <a class="doi-link" href="#" onclick="return false">DOI → ${a.doi}</a>
+        </div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('main-col').innerHTML = heroHTML + `<div class="article-list">${listHTML}</div>`;
+}
+
+function toggleHero() {
+  const exp = document.getElementById('hero-expanded');
+  const btn = document.getElementById('hero-btn');
+  const open = exp.classList.toggle('open');
+  btn.textContent = open ? 'COLLAPSE ↑' : 'EXPAND ↓';
+}
+
+function expandArticle(el, id) {
+  const exp = document.getElementById(`aexp-${id}`);
+  if (!exp) return;
+  const isOpen = exp.style.display === 'block';
+  exp.style.display = isOpen ? 'none' : 'block';
+}
+
+/* ════════════════════════════════════════════
+   RENDER VOCAB
+════════════════════════════════════════════ */
+function renderVocab() {
+  const side = document.getElementById('side-col');
+  const vocabHTML = vocabData.map(v => `
+    <div class="vocab-item">
+      <div class="v-top">
+        <span class="vword">${v.word}</span>
+        <span class="vpos">${v.pos}</span>
+        <span class="vlvl">${v.level}</span>
+      </div>
+      <div class="vdef">${v.def}</div>
+      <div class="vcolloc">搭配：${v.collocations.map(c=>`<strong>${c}</strong>`).join(' · ')}</div>
+      <div class="vex">"${v.example}"
+        <span>${v.exampleZh} — ${v.source}</span>
+      </div>
+    </div>`).join('');
+
+  side.innerHTML = `
+    <div class="side-hd">
+      <span>今日英文學習</span>
+      <span class="side-count">${vocabData.length} 詞</span>
+    </div>
+    ${vocabHTML}`;
+}
+
+/* ════════════════════════════════════════════
+   RENDER EMAIL SECTION
+════════════════════════════════════════════ */
+function renderEmail() {
+  const side = document.getElementById('side-col');
+  side.innerHTML += `
+    <div class="email-section">
+      <div class="side-hd" style="position:relative">
+        <span>📬 每日早報訂閱</span>
+      </div>
+      <div style="padding:14px 16px 0">
+        <p style="font-size:11.5px;color:var(--ink2);line-height:1.6;margin-bottom:10px">
+          每天 08:00 自動寄送今日精選摘要與英文詞彙到你的信箱。
+        </p>
+        <div class="email-row">
+          <input class="email-input" type="email" id="email-addr" placeholder="your@email.com">
+          <button class="email-submit" onclick="subscribeEmail()">訂閱</button>
+        </div>
+        <div class="email-success" id="email-success">✓ 設定成功！明天起每天寄送。</div>
+        <p style="font-size:10px;color:var(--ink3);margin-top:8px;line-height:1.5">
+          需搭配 Zapier 定時任務設定，<a href="README.md" style="color:var(--accent2);border-bottom:1px solid">查看設定說明</a>。
+        </p>
+      </div>
+    </div>`;
+}
+
+function subscribeEmail() {
+  const email = document.getElementById('email-addr')?.value.trim();
+  if (!email || !email.includes('@')) return;
+  localStorage.setItem('sf_email', email);
+  document.getElementById('email-success').style.display = 'block';
+}
+</script>
+</body>
+</html>
