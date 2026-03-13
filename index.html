@@ -1132,7 +1132,7 @@ async function loadNews() {
 {"articles":[{"id":1,"title":"...","titleZh":"...","category":"medicine","source":"Nature Medicine","daysAgo":1,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["同儕審查","n = 88,000"],"doi":"Nature Medicine Vol.31 (2026)"}],"vocab":[{"word":"agonist","pos":"n. · 藥理","level":"C1","def":"...","collocations":["receptor agonist","partial agonist"],"example":"...","exampleZh":"...","source":"Nature Medicine"}]}`;
 
   try {
-    const GEMINI_MODEL = 'gemini-2.0-flash';
+    const GEMINI_MODEL = 'gemini-2.0-flash-001';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
 
     const res = await fetch(url, {
@@ -1153,9 +1153,10 @@ async function loadNews() {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       const msg = err.error?.message || `HTTP ${res.status}`;
-      if (res.status === 400 || res.status === 403) throw new Error('KEY_INVALID');
-      if (res.status === 429) throw new Error('RATE_LIMIT');
-      throw new Error(`HTTP_${res.status}`);
+      const errBody = err.error?.message || '';
+      if (res.status === 400 || res.status === 403) throw new Error('KEY_INVALID:' + errBody);
+      if (res.status === 429) throw new Error('RATE_LIMIT:' + errBody);
+      throw new Error(`HTTP_${res.status}: ${errBody}`);
     }
 
     const data = await res.json();
@@ -1190,8 +1191,9 @@ async function loadNews() {
   } catch (e) {
     clearInterval(loadInterval);
 
-    const isRateLimit  = e.message === 'RATE_LIMIT';
-    const isKeyInvalid = e.message === 'KEY_INVALID';
+    const isRateLimit  = e.message.startsWith('RATE_LIMIT');
+    const isKeyInvalid = e.message.startsWith('KEY_INVALID');
+    const errDetail    = e.message.includes(':') ? e.message.split(':').slice(1).join(':').trim() : '';
 
     const title = isKeyInvalid ? 'API Key 無效'
                 : isRateLimit  ? '請稍候片刻'
@@ -1200,7 +1202,8 @@ async function loadNews() {
     const body = isKeyInvalid
       ? `Key 格式或權限有問題，請確認 Key 開頭為 <code>AIzaSy...</code> 且在 AI Studio 中為啟用狀態。`
       : isRateLimit
-      ? `<strong>剛建立的 Key 需要 1–2 分鐘才能生效</strong>，這是 Google 的正常傳播延遲，不是額度用完。<br>
+      ? `<strong>API 請求被限制（429）</strong>，可能原因：Key 剛建立尚未生效、或此地區有使用限制。<br>
+         ${errDetail ? `<span style="font-size:11px;color:var(--ink3);font-family:var(--mono)">${errDetail}</span><br>` : ''}
          <span id="countdown-msg" style="color:var(--gold)">將在 <span id="countdown">60</span> 秒後自動重試…</span>`
       : `發生未預期的錯誤（${e.message}），請重試。`;
 
