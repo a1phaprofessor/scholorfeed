@@ -965,10 +965,8 @@ function updateDate() {
    SETUP
 ════════════════════════════════════════════ */
 function saveSetup() {
-  const key = document.getElementById('api-key-input').value.trim();
+  let key = document.getElementById('api-key-input').value.trim().replace(/\s/g, '');
   const theme = document.getElementById('default-theme-select').value;
-  // 自動清除前後空白、換行
-  key = key.replace(/[\s\n\r]/g, '');
   if (!key || !key.includes('sk-ant')) {
     document.getElementById('api-key-input').style.borderColor = 'var(--accent)';
     document.getElementById('api-key-input').placeholder = '格式應為 sk-ant-api03-... 請重新輸入';
@@ -1131,7 +1129,7 @@ async function loadNews() {
 - exampleZh（例句中文翻譯）
 - source（來自哪篇文章的來源名）
 
-只回傳純 JSON 物件，絕對不要有任何前言、說明文字、markdown 語法或程式碼區塊（不要有 ```json），直接從 { 開始，到 } 結束。格式如下：
+只回傳純 JSON 物件，絕對不要有任何前言、說明文字、markdown 語法或程式碼區塊，直接從 { 開始，到 } 結束。格式如下：
 {"articles":[{"id":1,"title":"...","titleZh":"...","category":"medicine","source":"Nature Medicine","daysAgo":1,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["同儕審查","n = 88,000"],"doi":"Nature Medicine Vol.31 (2026)"}],"vocab":[{"word":"agonist","pos":"n. · 藥理","level":"C1","def":"...","collocations":["receptor agonist","partial agonist"],"example":"...","exampleZh":"...","source":"Nature Medicine"}]}`;
 
   try {
