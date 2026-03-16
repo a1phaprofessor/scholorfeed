@@ -496,6 +496,85 @@ input { font-family: inherit; }
 }
 
 /* ═══════════════════════════════════════════════
+   SEARCH TAB
+═══════════════════════════════════════════════ */
+.search-modal-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 500;
+  align-items: center; justify-content: center;
+}
+.search-modal-overlay.open { display: flex; }
+.search-modal {
+  background: var(--bg);
+  border: 1.5px solid var(--ink);
+  padding: 24px 28px;
+  width: 480px; max-width: 90vw;
+}
+.search-modal-title {
+  font-family: var(--bask), 'Libre Baskerville', Georgia, serif;
+  font-size: 13px; font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--ink);
+  margin-bottom: 14px;
+  text-transform: uppercase;
+}
+.search-modal-input {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 13px;
+  padding: 10px 12px;
+  border: 1px solid var(--ink);
+  background: var(--bg2);
+  color: var(--ink);
+  outline: none;
+  margin-bottom: 12px;
+}
+.search-modal-input:focus { border-color: var(--accent); }
+.search-modal-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.search-chip {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  color: var(--ink3);
+  cursor: pointer;
+  background: none;
+  letter-spacing: .05em;
+  transition: all .12s;
+}
+.search-chip:hover { border-color: var(--accent); color: var(--accent); }
+.search-submit {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .1em;
+  padding: 8px 20px;
+  background: var(--ink);
+  color: var(--bg);
+  border: none;
+  cursor: pointer;
+}
+.search-submit:hover { opacity: .8; }
+.search-cancel {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .08em;
+  padding: 8px 16px;
+  background: none;
+  color: var(--ink3);
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+.search-loading {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink3);
+  margin-top: 8px;
+  display: none;
+}
+
+/* ═══════════════════════════════════════════════
    FAVOURITE BUTTON
 ═══════════════════════════════════════════════ */
 .fav-btn {
@@ -938,6 +1017,31 @@ input { font-family: inherit; }
     </div>
   </div>
 
+  <!-- Search Modal -->
+  <div class="search-modal-overlay" id="search-overlay">
+    <div class="search-modal">
+      <div class="search-modal-title">🔍 自訂主題搜尋</div>
+      <input class="search-modal-input" id="search-input" type="text"
+        placeholder="輸入任何主題，例如：區塊鏈、量子運算、癌症治療..."
+        onkeydown="if(event.key==='Enter')doSearch()">
+      <div class="search-modal-row">
+        <button class="search-chip" onclick="setSearchTopic('區塊鏈與加密貨幣')">區塊鏈</button>
+        <button class="search-chip" onclick="setSearchTopic('量子運算')">量子運算</button>
+        <button class="search-chip" onclick="setSearchTopic('癌症免疫療法')">癌症治療</button>
+        <button class="search-chip" onclick="setSearchTopic('人工智慧監管')">AI 監管</button>
+        <button class="search-chip" onclick="setSearchTopic('再生能源')">再生能源</button>
+        <button class="search-chip" onclick="setSearchTopic('地緣政治')">地緣政治</button>
+        <button class="search-chip" onclick="setSearchTopic('太空探索')">太空探索</button>
+        <button class="search-chip" onclick="setSearchTopic('生物科技')">生物科技</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="search-submit" onclick="doSearch()">▶ 搜尋新聞</button>
+        <button class="search-cancel" onclick="closeSearch()">取消</button>
+        <span class="search-loading" id="search-loading">正在搜尋中…</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Category strip — dynamically rendered by renderCategories() -->
   <div class="cat-strip" id="cat-strip">
     <div class="citem active" data-cat="all" onclick="filterCat(this)">▲ 精選焦點</div>
@@ -964,6 +1068,84 @@ let currentCat = 'all';
 let articlesData = [];
 let categoriesData = [];
 
+let customSearchLabel = '';
+let customSearchArticles = [];
+
+function openSearch() {
+  document.getElementById('search-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('search-input').focus(), 100);
+}
+
+function closeSearch() {
+  document.getElementById('search-overlay').classList.remove('open');
+}
+
+function setSearchTopic(topic) {
+  document.getElementById('search-input').value = topic;
+  document.getElementById('search-input').focus();
+}
+
+async function doSearch() {
+  const topic = document.getElementById('search-input').value.trim();
+  if (!topic) return;
+  const apiKey = localStorage.getItem('sf_api_key');
+  if (!apiKey) return;
+
+  document.getElementById('search-loading').style.display = 'inline';
+  document.querySelector('.search-submit').disabled = true;
+
+  try {
+    const today = new Date().toLocaleDateString('zh-TW', {year:'numeric',month:'long',day:'numeric'});
+    const prompt = '今天是 ' + today + '。請提供關於「' + topic + '」的最新重要新聞，共 10-12 篇。來源必須是具公信力的媒體（BBC、Reuters、NYT、Nature、The Guardian、Wired、Financial Times 等）。對每篇：title（英文）、titleZh（繁體中文）、source、daysAgo（0-7）、hot（true/false）、summary（繁體中文 3 句）、quote（30-50 字英文原句）、discussion（繁體中文 2 句）、pills（2-3 個標籤）、doi、url（真實連結）。只回傳 JSON，從 { 開始：{"articles":[{"id":1,"title":"...","titleZh":"...","category":"custom_search","source":"...","daysAgo":0,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["..."],"doi":"...","url":"https://..."}]}';
+
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4000,
+        system: 'JSON generator only. Output pure JSON starting with {. No markdown.',
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) throw new Error('API 錯誤');
+    const data = await res.json();
+    const raw = data.content?.[0]?.text || '';
+    const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    if (s === -1 || e <= s) throw new Error('解析失敗');
+    const parsed = JSON.parse(raw.slice(s, e + 1));
+    const articles = (parsed.articles || []).map((a, i) => ({ ...a, id: Date.now() + i, category: 'custom_search' }));
+
+    if (articles.length === 0) throw new Error('找不到相關新聞');
+
+    customSearchLabel = topic;
+    customSearchArticles = articles;
+
+    // 加入主要資料
+    articlesData = articlesData.filter(a => a.category !== 'custom_search').concat(articles);
+
+    closeSearch();
+    document.getElementById('search-input').value = '';
+
+    // 切換到搜尋結果 tab
+    currentCat = 'custom_search';
+    renderCategories();
+    renderArticles();
+
+  } catch(err) {
+    alert('搜尋失敗：' + err.message);
+  } finally {
+    document.getElementById('search-loading').style.display = 'none';
+    document.querySelector('.search-submit').disabled = false;
+  }
+}
+
 function defaultCategories() {
   return [
     {id:'finance',  label:'財經'},
@@ -986,17 +1168,25 @@ const CAT_EMOJI = {
 function renderCategories() {
   const strip = document.getElementById('cat-strip');
   const favCount = getFavs().length;
+  const searchTab = currentCat === 'custom_search'
+    ? `<div class="citem active" data-cat="custom_search">🔍 ${customSearchLabel||'搜尋結果'}</div>`
+    : '';
   strip.innerHTML = `
     <div class="citem ${currentCat==='all'?'active':''}" data-cat="all" onclick="filterCat(this)">▲ 精選焦點</div>
     ${categoriesData.map(c => `
       <div class="citem ${currentCat===c.id?'active':''}" data-cat="${c.id}" onclick="filterCat(this)">
         ${CAT_EMOJI[c.id]||'●'} ${c.label}
       </div>`).join('')}
+    ${searchTab}
     <div class="citem ${currentCat==='favourites'?'active':''}" data-cat="favourites" onclick="filterCat(this)" id="fav-tab">
       ★ 我的最愛${favCount>0?' ('+favCount+')':''}
+    </div>
+    <div class="citem" onclick="openSearch()" style="color:var(--accent2);border-left:2px solid var(--accent2)">
+      🔍 搜尋主題
     </div>`;
 }
 let vocabData = [];
+let vocabCache = {}; // 每個分類的詞彙快取
 
 /* ════════════════════════════════════════════
    INIT
@@ -1085,6 +1275,71 @@ function filterCat(el) {
   el.classList.add('active');
   currentCat = el.dataset.cat;
   renderArticles();
+  refreshVocabForCat(currentCat);
+}
+
+async function refreshVocabForCat(cat) {
+  // 如果快取有就直接用
+  if (vocabCache[cat]) {
+    vocabData = vocabCache[cat];
+    renderVocab();
+    renderEmail();
+    return;
+  }
+
+  const apiKey = localStorage.getItem('sf_api_key');
+  if (!apiKey) return;
+
+  // 取當前分類的文章標題
+  let articles;
+  if (cat === 'all') {
+    articles = articlesData.filter(a => a.hot).slice(0, 6);
+  } else if (cat === 'favourites') {
+    const favs = getFavs();
+    articles = articlesData.filter(a => favs.includes(a.id)).slice(0, 6);
+  } else {
+    articles = articlesData.filter(a => a.category === cat).slice(0, 6);
+  }
+
+  if (!articles.length) return;
+
+  // 顯示 loading
+  const sideHd = document.querySelector('.side-hd span');
+  if (sideHd) sideHd.textContent = '載入詞彙中…';
+
+  try {
+    const catLabel = cat === 'all' ? '精選焦點' : cat === 'favourites' ? '我的最愛' : (categoriesData.find(c=>c.id===cat)?.label || cat);
+    const titles = articles.map(a => a.title).join('\n');
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1500,
+        system: 'JSON generator only. Output pure JSON starting with {. No markdown.',
+        messages: [{ role: 'user', content: '從以下「' + catLabel + '」分類的新聞標題中，選出 5 個最值得學習的英文詞彙（B2-C2，偏向該領域專業術語）：\n' + titles + '\n\n只回傳JSON：{"vocab":[{"word":"...","pos":"n. · 領域","level":"C1","def":"一句繁體中文定義","collocations":["...","..."],"example":"...（20-30字）","exampleZh":"...","source":"..."}]}' }]
+      })
+    });
+
+    if (!res.ok) return;
+    const data = await res.json();
+    const raw = data.content?.[0]?.text || '';
+    const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+    if (s === -1 || e <= s) return;
+    const parsed = JSON.parse(raw.slice(s, e + 1));
+    const newVocab = parsed.vocab || [];
+    if (newVocab.length > 0) {
+      vocabCache[cat] = newVocab;
+      vocabData = newVocab;
+      renderVocab();
+      renderEmail();
+    }
+  } catch(err) { /* silent fail */ }
 }
 
 // ── 收藏功能 ──
@@ -1353,6 +1608,8 @@ function renderArticles() {
   } else if (currentCat === 'favourites') {
     const favs = getFavs();
     filtered = articlesData.filter(a => favs.includes(a.id));
+  } else if (currentCat === 'custom_search') {
+    filtered = articlesData.filter(a => a.category === 'custom_search');
   } else {
     filtered = articlesData.filter(a => a.category === currentCat);
   }
@@ -1506,7 +1763,7 @@ function renderVocab() {
 
   side.innerHTML = `
     <div class="side-hd">
-      <span>今日英文學習</span>
+      <span>${currentCat === 'all' ? '精選焦點' : currentCat === 'favourites' ? '我的最愛' : currentCat === 'custom_search' ? (customSearchLabel||'搜尋') : (categoriesData.find(c=>c.id===currentCat)?.label||'今日')} · 詞彙</span>
       <span class="side-count">${vocabData.length} 詞</span>
     </div>
     ${vocabHTML}`;
