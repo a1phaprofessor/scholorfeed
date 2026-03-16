@@ -1072,6 +1072,8 @@ let customSearchLabel = '';
 let customSearchArticles = [];
 
 function openSearch() {
+  const loadEl = document.getElementById('search-loading');
+  if (loadEl) { loadEl.style.display = 'none'; loadEl.style.color = 'var(--gold)'; loadEl.textContent = '正在搜尋中…'; }
   document.getElementById('search-overlay').classList.add('open');
   setTimeout(() => document.getElementById('search-input').focus(), 100);
 }
@@ -1114,15 +1116,42 @@ async function doSearch() {
       })
     });
 
-    if (!res.ok) throw new Error('API 錯誤');
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error((errData.error?.message || 'API 錯誤') + ' (' + res.status + ')');
+    }
     const data = await res.json();
     const raw = data.content?.[0]?.text || '';
     const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
-    if (s === -1 || e <= s) throw new Error('解析失敗');
-    const parsed = JSON.parse(raw.slice(s, e + 1));
-    const articles = (parsed.articles || []).map((a, i) => ({ ...a, id: Date.now() + i, category: 'custom_search' }));
+    if (s === -1 || e <= s) throw new Error('回應格式錯誤，請重試');
 
-    if (articles.length === 0) throw new Error('找不到相關新聞');
+    // 清理常見的 JSON 破壞字符
+    let cleanJson = raw.slice(s, e + 1)
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleanJson);
+    } catch(jsonErr) {
+      // 最後手段：只取 articles 陣列
+      const arrMatch = raw.match(/"articles"\s*:\s*\[[\s\S]*?\]\s*}/);
+      if (arrMatch) {
+        try { parsed = JSON.parse('{' + arrMatch[0]); } catch(e2) { throw new Error('JSON 解析失敗，請重試'); }
+      } else {
+        throw new Error('JSON 解析失敗，請重試');
+      }
+    }
+
+    const articles = (parsed.articles || []).map((a, i) => ({
+      ...a,
+      id: Date.now() + i,
+      category: 'custom_search',
+      // 清理可能破壞顯示的字符
+      title: (a.title || '').replace(/"/g, '\"'),
+      summary: (a.summary || ''),
+      quote: (a.quote || ''),
+    }));
+
+    if (articles.length === 0) throw new Error('找不到相關新聞，請換個主題試試');
 
     customSearchLabel = topic;
     customSearchArticles = articles;
@@ -1139,7 +1168,8 @@ async function doSearch() {
     renderArticles();
 
   } catch(err) {
-    alert('搜尋失敗：' + err.message);
+    const loadEl = document.getElementById('search-loading');
+    if (loadEl) { loadEl.style.display = 'inline'; loadEl.textContent = '⚠ ' + err.message; loadEl.style.color = 'var(--accent)'; }
   } finally {
     document.getElementById('search-loading').style.display = 'none';
     document.querySelector('.search-submit').disabled = false;
