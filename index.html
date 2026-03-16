@@ -967,9 +967,12 @@ function updateDate() {
 function saveSetup() {
   const key = document.getElementById('api-key-input').value.trim();
   const theme = document.getElementById('default-theme-select').value;
-  if (!key || !key.startsWith('sk-ant')) {
+  // 自動清除前後空白、換行
+  key = key.replace(/[\s\n\r]/g, '');
+  if (!key || !key.includes('sk-ant')) {
     document.getElementById('api-key-input').style.borderColor = 'var(--accent)';
     document.getElementById('api-key-input').placeholder = '格式應為 sk-ant-api03-... 請重新輸入';
+    document.getElementById('api-key-input').value = '';
     return;
   }
   localStorage.setItem('sf_api_key', key);
