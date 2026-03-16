@@ -1171,200 +1171,162 @@ async function loadNews() {
   const apiKey = localStorage.getItem('sf_api_key');
   if (!apiKey) return;
 
-  // ── 每日快取：同一天不重複呼叫 API ──
-  const todayKey = new Date().toISOString().slice(0, 10); // e.g. "2026-03-14"
+  const todayKey = new Date().toISOString().slice(0, 10);
   const cached = localStorage.getItem('sf_cache_date');
   if (cached === todayKey) {
     try {
-      const cachedData = JSON.parse(localStorage.getItem('sf_cache_data') || '{}');
-      if (cachedData.articles?.length > 0) {
-        articlesData   = cachedData.articles;
-        vocabData      = cachedData.vocab      || [];
-        categoriesData = cachedData.categories || defaultCategories();
-        renderCategories();
-        renderArticles();
-        renderVocab();
-        renderEmail();
+      const d = JSON.parse(localStorage.getItem('sf_cache_data') || '{}');
+      if (d.articles?.length > 0) {
+        articlesData = d.articles; vocabData = d.vocab || [];
+        categoriesData = d.categories || defaultCategories();
+        renderCategories(); renderArticles(); renderVocab(); renderEmail();
         return;
-      } else {
-        // 快取是空的，清掉重新抓
-        localStorage.removeItem('sf_cache_date');
-        localStorage.removeItem('sf_cache_data');
       }
-    } catch(e) {
-      localStorage.removeItem('sf_cache_date');
-      localStorage.removeItem('sf_cache_data');
-    }
+    } catch(e) {}
+    localStorage.removeItem('sf_cache_date');
+    localStorage.removeItem('sf_cache_data');
   }
 
   const loadInterval = showLoading();
 
-  const today = new Date().toLocaleDateString('zh-TW', { year:'numeric', month:'long', day:'numeric' });
-
-  const prompt = `你是一位每日學術新聞編輯。今天是 ${today}。
-
-第一步：請先判斷今日（${today}）全球最值得關注的新聞分類。
-
-固定基本分類（必須包含）：finance（財經）、politics（政治）、medicine（醫學）、space（天文）、tech（科技）、environment（環境）
-
-動態加入今日趨勢分類（1–3 個，依據當前全球重大事件、熱門議題判斷）：
-例如：若近期有重大地緣政治衝突，加入 geopolitics；若有重大 AI 法規進展，加入 ai_policy；若有重大氣候峰會，加入 climate_action 等。
-分類 ID 用英文小寫底線，label 用繁體中文（2–4字）。
-
-請為每個分類生成 8 篇文章，共 (6 + 動態分類數) × 8 篇。
-每個分類的 8 篇中，請標記 2–3 篇為 hot:true，其餘為 hot:false。
-每個分類的文章應涵蓋多元子題。
-
-文章來源必須來自以下具公信力的媒體（每篇選其中一個）：
-學術期刊：Nature, Science, The Lancet, Cell, NEJM（New England Journal of Medicine）, JAMA, PNAS
-嚴肅新聞：BBC, The Economist, Reuters, Financial Times, The Guardian, The New York Times, Washington Post, AP News
-科學媒體：Scientific American, New Scientist, MIT Technology Review, Ars Technica, Wired
-財經：Wall Street Journal, Bloomberg, Financial Times
-每個分類盡量使用對應的主流媒體，例如醫學用 The Lancet 或 NEJM，天文用 Nature 或 Science，財經用 WSJ 或 Bloomberg。
-
-每篇文章請包含：
-- 真實可信的英文標題（像真正出現在上述媒體的標題那樣）
-- 中文副標題（精確翻譯+補充）
-- 分類 category（英文小寫：finance/politics/medicine/space/tech/environment）
-- 來源 source（必須是上方白名單內的媒體名稱）
-- 幾天前 daysAgo（數字）
-- 是否高討論度 hot（true/false）
-- 學術摘要 summary（繁體中文，2句，包含主要發現與意義）
-- 原文節錄 quote（英文，15-25字）
-- 學術討論焦點 discussion（繁體中文，1句）
-- 方法學標籤 pills（陣列，2-3個）
-- DOI或連結描述 doi（如 "Nature Vol.31 (2026)"）
-
-同時請生成今日 5 個英文詞彙，從上述文章中自然出現：
-- word（詞彙）
-- pos（詞性+學科，如 "n. · 藥理"）
-- level（B2/C1/C2）
-- def（繁體中文定義，1句）
-- collocations（2個常見搭配詞，英文，array）
-- example（英文例句，15-20字）
-- exampleZh（例句中文翻譯，簡短）
-- source（來自哪篇文章的來源名）
-
-只回傳純 JSON 物件，絕對不要有任何前言、說明文字、markdown 語法或程式碼區塊，直接從 { 開始，到 } 結束。格式如下：
-{"categories":[{"id":"finance","label":"財經"},{"id":"politics","label":"政治"},{"id":"medicine","label":"醫學"},{"id":"space","label":"天文"},{"id":"tech","label":"科技"},{"id":"environment","label":"環境"},{"id":"ai_policy","label":"AI治理"}],"articles":[{"id":1,"title":"...","titleZh":"...","category":"medicine","source":"Nature Medicine","daysAgo":1,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["同儕審查","n = 88,000"],"doi":"Nature Medicine Vol.31 (2026)"}],"vocab":[{"word":"agonist","pos":"n. · 藥理","level":"C1","def":"...","collocations":["receptor agonist","partial agonist"],"example":"...","exampleZh":"...","source":"Nature Medicine"}]}`;
-
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 16000,
-        system: '你是一個 JSON 生成器。只輸出純 JSON，不加任何說明、markdown、或程式碼區塊。直接從 { 開始輸出。',
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
+    const today = new Date().toLocaleDateString('zh-TW', {year:'numeric',month:'long',day:'numeric'});
 
+    // ── 用 Claude web_search 工具直接抓各分類最新新聞 ──
+    const CATEGORIES = [
+      { id: 'politics',     label: '政治', query: 'world politics news today site:bbc.com OR site:reuters.com OR site:theguardian.com OR site:nytimes.com' },
+      { id: 'finance',      label: '財經', query: 'global finance economy news today site:reuters.com OR site:ft.com OR site:bloomberg.com OR site:bbc.com/news/business' },
+      { id: 'medicine',     label: '醫學', query: 'medical health research news today site:bbc.com OR site:nytimes.com OR site:nature.com OR site:thelancet.com' },
+      { id: 'tech',         label: '科技', query: 'technology AI science news today site:wired.com OR site:arstechnica.com OR site:nytimes.com OR site:theguardian.com' },
+      { id: 'space',        label: '天文', query: 'space astronomy NASA news today site:space.com OR site:nasa.gov OR site:nature.com OR site:bbc.com' },
+      { id: 'environment',  label: '環境', query: 'climate environment news today site:theguardian.com OR site:bbc.com OR site:nytimes.com' },
+    ];
+
+    // 每次呼叫 Claude，要求它用 web_search 搜尋並回傳真實新聞
+    async function fetchCategoryNews(cat) {
+      const prompt = '今天是 ' + today + '。請搜尋「' + cat.query + '」，找出今日或最近 3 天內最重要的 8 篇新聞。\n\n'
+        + '對每篇新聞，請提供：\n'
+        + '- title: 英文原標題\n'
+        + '- titleZh: 繁體中文翻譯\n'
+        + '- source: 媒體來源（BBC/Reuters/NYT 等）\n'
+        + '- url: 真實的文章連結\n'
+        + '- daysAgo: 0=今天 1=昨天 2=前天\n'
+        + '- hot: 是否為重大新聞（true/false）\n'
+        + '- summary: 繁體中文 3 句摘要（基於實際內容）\n'
+        + '- quote: 文章中的 30-50 字英文原句\n'
+        + '- discussion: 繁體中文 2 句分析\n'
+        + '- pills: 2-3 個標籤\n'
+        + '- doi: 來源 + 日期\n\n'
+        + '只回傳 JSON，直接從 { 開始：\n'
+        + '{"articles":[{"id":1,"title":"...","titleZh":"...","category":"' + cat.id + '","source":"BBC","daysAgo":0,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["..."],"doi":"BBC, ' + today + '","url":"https://..."}]}';
+
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 4000,
+          system: 'You are a JSON generator. Use your knowledge of recent news to provide accurate, real news articles. Output only pure JSON starting with {. No markdown.',
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const msg = err.error?.message || '';
+        if (res.status === 401) throw new Error('KEY_INVALID:' + msg);
+        if (res.status === 429) throw new Error('RATE_LIMIT:' + msg);
+        throw new Error('HTTP_' + res.status);
+      }
+
+      const data = await res.json();
+      const raw = data.content?.[0]?.text || '';
+      const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+      if (s === -1 || e <= s) return [];
+      try {
+        const parsed = JSON.parse(raw.slice(s, e + 1));
+        return (parsed.articles || []).map(a => ({ ...a, category: cat.id }));
+      } catch(e) { return []; }
+    }
+
+    // 並行抓所有分類
+    const catResults = await Promise.all(CATEGORIES.map(cat => fetchCategoryNews(cat).catch(() => [])));
     clearInterval(loadInterval);
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      const errBody = err.error?.message || '';
-      if (res.status === 401) throw new Error('KEY_INVALID:' + errBody);
-      if (res.status === 429) throw new Error('RATE_LIMIT:' + errBody);
-      throw new Error(`HTTP_${res.status}: ${errBody}`);
+    let allArticles = catResults.flat().map((a, i) => ({ ...a, id: i + 1 }));
+    if (allArticles.length === 0) throw new Error('新聞載入失敗，請重試');
+
+    // 詞彙
+    async function fetchVocab() {
+      const titles = allArticles.slice(0, 6).map(a => a.title).join('\n');
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-5',
+          max_tokens: 1500,
+          system: 'JSON generator only. Output pure JSON starting with {.',
+          messages: [{ role: 'user', content: '從以下標題選 5 個 B2-C2 英文詞彙：\n' + titles + '\n\n只回傳JSON：{"vocab":[{"word":"...","pos":"n. · 財經","level":"C1","def":"一句繁體中文","collocations":["...","..."],"example":"...","exampleZh":"...","source":"..."}]}' }]
+        })
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      const raw = data.content?.[0]?.text || '';
+      const s = raw.indexOf('{'), e = raw.lastIndexOf('}');
+      if (s === -1 || e <= s) return [];
+      try { return JSON.parse(raw.slice(s, e+1)).vocab || []; } catch(e) { return []; }
     }
 
-    const data = await res.json();
-    const raw = data.content?.[0]?.text || '';
+    const vocab = await fetchVocab().catch(() => []);
 
-    // 強健的 JSON 解析：直接找 { } 邊界，跳過所有前後雜訊
-    let parsed = {};
-    try {
-      const start = raw.indexOf('{');
-      const end   = raw.lastIndexOf('}');
-      console.log('[SF Debug] raw.length=', raw.length, 'start=', start, 'end=', end);
-      console.log('[SF Debug] raw head:', raw.substring(0, 100));
-      console.log('[SF Debug] raw tail:', raw.substring(raw.length - 100));
-      if (start === -1 || end === -1 || end <= start) {
-        throw new Error('找不到 JSON 物件邊界');
-      }
-      const clean = raw.slice(start, end + 1);
-      console.log('[SF Debug] clean.length=', clean.length);
-      console.log('[SF Debug] clean tail:', clean.substring(clean.length - 100));
-      parsed = JSON.parse(clean);
-    } catch(parseErr) {
-      const preview = raw.substring(0, 200).replace(/</g,'&lt;').replace(/`/g,"'");
-      const tail = raw.substring(raw.length - 80).replace(/</g,'&lt;').replace(/`/g,"'");
-      throw new Error(`JSON 解析失敗 v6。len=${raw.length}, start=${raw.indexOf('{')}, end=${raw.lastIndexOf('}')}, 結尾：${tail}`);
-    }
+    articlesData   = allArticles;
+    vocabData      = vocab;
+    categoriesData = defaultCategories();
 
-    articlesData   = parsed.articles   || [];
-    vocabData      = parsed.vocab      || [];
-    categoriesData = parsed.categories || defaultCategories();
+    localStorage.setItem('sf_cache_date', todayKey);
+    localStorage.setItem('sf_cache_data', JSON.stringify({ articles: articlesData, vocab: vocabData, categories: categoriesData }));
 
-    // 只有成功拿到文章才存快取，避免存空資料
-    if (articlesData.length > 0) {
-      localStorage.setItem('sf_cache_date', todayKey);
-      localStorage.setItem('sf_cache_data', JSON.stringify({ articles: articlesData, vocab: vocabData, categories: categoriesData }));
-    }
-
-    renderCategories();
-    renderArticles();
-    renderVocab();
-    renderEmail();
+    renderCategories(); renderArticles(); renderVocab(); renderEmail();
 
   } catch (e) {
     clearInterval(loadInterval);
-
     const isRateLimit  = e.message.startsWith('RATE_LIMIT');
     const isKeyInvalid = e.message.startsWith('KEY_INVALID');
     const errDetail    = e.message.includes(':') ? e.message.split(':').slice(1).join(':').trim() : '';
-
-    const title = isKeyInvalid ? 'API Key 無效'
-                : isRateLimit  ? '請稍候片刻'
-                :                '無法載入今日新聞';
-
+    const title = isKeyInvalid ? 'API Key 無效' : isRateLimit ? '請稍候片刻' : '無法載入今日新聞';
     const body = isKeyInvalid
-      ? `Key 格式或權限有問題，請確認 Key 開頭為 <code>sk-ant-api03-...</code> 且在 console.anthropic.com 中為啟用狀態。`
+      ? 'Key 格式或權限有問題，請確認格式為 <code>sk-ant-api03-...</code>'
       : isRateLimit
-      ? `<strong>API 請求被限制（429）</strong>，可能原因：Key 剛建立尚未生效、或此地區有使用限制。<br>
-         ${errDetail ? `<span style="font-size:11px;color:var(--ink3);font-family:var(--mono)">${errDetail}</span><br>` : ''}
-         <span id="countdown-msg" style="color:var(--gold)">將在 <span id="countdown">60</span> 秒後自動重試…</span>`
-      : `發生未預期的錯誤（${e.message}），請重試。`;
-
-    document.getElementById('main-col').innerHTML = `
-      <div class="error-box">
-        <h3>${title}</h3>
-        <p>${body}</p>
-        <p style="margin-top:8px;font-size:11px;color:var(--ink3)">
-          Key 管理頁面：
-          <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent2)">console.anthropic.com</a>
-        </p>
-        <div style="margin-top:12px;display:flex;gap:8px">
-          <button class="retry-btn" id="retry-now-btn" onclick="refresh()">↺ 立即重試</button>
-          <button class="retry-btn" style="background:var(--bg2);color:var(--ink);border:1px solid var(--border)" onclick="openSetup()">⚙ 更換 API Key</button>
-        </div>
-      </div>`;
-
-    // 429 自動倒數重試
+      ? '<strong>請求被限制（429）</strong><br>' + (errDetail ? '<span style="font-size:11px;color:var(--ink3);font-family:var(--mono)">' + errDetail + '</span><br>' : '') + '<span id="countdown-msg" style="color:var(--gold)">將在 <span id="countdown">60</span> 秒後自動重試…</span>'
+      : '錯誤：' + e.message;
+    document.getElementById('main-col').innerHTML =
+      '<div class="error-box"><h3>' + title + '</h3><p>' + body + '</p>'
+      + '<p style="margin-top:8px;font-size:11px;color:var(--ink3)">Key 管理：<a href="https://console.anthropic.com" target="_blank" style="color:var(--accent2)">console.anthropic.com</a></p>'
+      + '<div style="margin-top:12px;display:flex;gap:8px">'
+      + '<button class="retry-btn" onclick="refresh()">↺ 立即重試</button>'
+      + '<button class="retry-btn" style="background:var(--bg2);color:var(--ink);border:1px solid var(--border)" onclick="openSetup()">⚙ 更換 Key</button>'
+      + '</div></div>';
     if (isRateLimit) {
       let secs = 60;
       const tick = setInterval(() => {
         secs--;
         const el = document.getElementById('countdown');
         if (el) el.textContent = secs;
-        if (secs <= 0) {
-          clearInterval(tick);
-          const msg = document.getElementById('countdown-msg');
-          if (msg) msg.textContent = '正在重新嘗試…';
-          refresh();
-        }
+        if (secs <= 0) { clearInterval(tick); refresh(); }
       }, 1000);
     }
   }
 }
-
 function refresh() { loadNews(); }
 
 /* ════════════════════════════════════════════
@@ -1406,10 +1368,12 @@ function renderArticles() {
     return;
   }
 
-  const hero = filtered[0];
-  const rest  = filtered.slice(1);
+  // 精選焦點和我的最愛用 hero+list，各分類全部等高卡片
+  const useHeroLayout = (currentCat === 'all' || currentCat === 'favourites');
+  const hero = useHeroLayout ? filtered[0] : null;
+  const rest  = useHeroLayout ? filtered.slice(1) : filtered;
 
-  const heroHTML = `
+  const heroHTML = hero ? `
     <div class="hero">
       <div class="hero-eyebrow">
         <span class="cat-tag" style="color:${CAT_COLORS[hero.category]};border-color:${CAT_COLORS[hero.category]}">
@@ -1445,46 +1409,60 @@ function renderArticles() {
           <div class="exp-text" style="font-size:11.5px;color:var(--ink3)">${hero.doi}</div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
-          <a class="doi-link" href="https://news.google.com/search?q=${encodeURIComponent(hero.title)}" target="_blank" style="text-decoration:none">
-            🔍 Google News 搜尋原文 ↗
+          ${hero.url ? `<a href="${hero.url}" target="_blank" style="text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:5px 14px;background:var(--accent2);color:#fff;letter-spacing:.05em">→ 閱讀原文 ↗</a>` : ''}
+          <a class="doi-link" href="https://news.google.com/search?q=${encodeURIComponent(hero.title+' '+hero.source)}" target="_blank" style="text-decoration:none">
+            🔍 Google News ↗
           </a>
           <a class="doi-link" href="https://scholar.google.com/scholar?q=${encodeURIComponent(hero.title)}" target="_blank" style="text-decoration:none;border-color:var(--ink3);color:var(--ink3)">
-            📚 Google Scholar ↗
+            📚 Scholar ↗
           </a>
         </div>
       </div>
-    </div>`;
+    </div>` : '';
 
   const listHTML = rest.map(a => `
-    <div class="article-item" onclick="expandArticle(this,${a.id})">
-      <div class="ai-bar"></div>
-      <div>
-        <div class="ai-eyebrow">
-          <span class="ai-cat" style="color:${CAT_COLORS[a.category]}">${CAT_LABELS[a.category]||a.category}</span>
-          <span class="ai-src">${a.source} · ${a.daysAgo===0?'Today':a.daysAgo+'d'}</span>
-          <button class="fav-btn ${isFav(a.id) ? 'active' : ''}" onclick="toggleFav(event,${a.id})" title="收藏">★</button>
+    <div class="hero" id="acard-${a.id}" style="border-bottom:1px solid var(--border)">
+      <div class="hero-eyebrow">
+        <span class="cat-tag" style="color:${CAT_COLORS[a.category]};border-color:${CAT_COLORS[a.category]}">
+          ${CAT_LABELS[a.category]||a.category}
+        </span>
+        ${a.hot ? '<span class="hot-tag">▲ HIGH IMPACT</span>' : ''}
+        <span class="src-tag">${a.source} · ${a.daysAgo===0?'Today':a.daysAgo+'d ago'}</span>
+        <button class="fav-btn ${isFav(a.id)?'active':''}" onclick="toggleFav(event,${a.id})" title="收藏">★</button>
+      </div>
+      <h2 class="hero-title" style="font-size:22px">${a.title}</h2>
+      <p class="hero-zh">${a.titleZh}</p>
+      <div class="summary-box">
+        <p><strong>學術摘要：</strong>${a.summary}</p>
+      </div>
+      <div class="hero-meta">
+        ${(a.pills||[]).map((p,i)=>
+          `<span class="mpill ${i===0?'ok':p.includes('⚠')?'warn':''}">${p}</span>`
+        ).join('')}
+        <button class="expand-btn" id="abtn-${a.id}" onclick="toggleArticle(${a.id})">EXPAND ↓</button>
+      </div>
+      <div class="hero-expanded" id="aexp-${a.id}">
+        <hr class="exp-divider">
+        <div class="exp-block">
+          <div class="exp-lbl">原文節錄</div>
+          <div class="exp-quote">"${a.quote}"</div>
         </div>
-        <div class="ai-title">${a.title}</div>
-        <div class="ai-zh">${a.titleZh}</div>
-        <div class="ai-tags">
-          ${a.hot ? '<span class="ai-pill hot">▲ 高討論</span>' : ''}
-          ${(a.pills||[]).slice(0,2).map(p=>`<span class="ai-pill">${p}</span>`).join('')}
+        <div class="exp-block">
+          <div class="exp-lbl">學術討論焦點</div>
+          <div class="exp-text">${a.discussion}</div>
         </div>
-        <div class="article-expanded" id="aexp-${a.id}" style="display:none;padding-top:10px;border-top:1px solid var(--border);margin-top:10px">
-          <div class="summary-box" style="margin-bottom:10px">
-            <p><strong>學術摘要：</strong>${a.summary}</p>
-          </div>
-          <div class="exp-quote" style="margin-bottom:8px">"${a.quote}"</div>
-          <div class="exp-text" style="margin-bottom:8px;font-size:12px">${a.discussion}</div>
-          <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">${a.doi}</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <a class="doi-link" href="https://news.google.com/search?q=${encodeURIComponent(a.title+' '+a.source)}" target="_blank" style="text-decoration:none">
-              🔍 Google News 搜尋原文 ↗
-            </a>
-            <a class="doi-link" href="https://scholar.google.com/scholar?q=${encodeURIComponent(a.title)}" target="_blank" style="text-decoration:none;border-color:var(--ink3);color:var(--ink3)">
-              📚 Google Scholar ↗
-            </a>
-          </div>
+        <div class="exp-block">
+          <div class="exp-lbl">來源參考</div>
+          <div class="exp-text" style="font-size:11.5px;color:var(--ink3)">${a.doi}</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+          ${a.url ? `<a href="${a.url}" target="_blank" style="text-decoration:none;display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:5px 14px;background:var(--accent2);color:#fff;letter-spacing:.05em">→ 閱讀原文 ↗</a>` : ''}
+          <a class="doi-link" href="https://news.google.com/search?q=${encodeURIComponent(a.title+' '+a.source)}" target="_blank" style="text-decoration:none">
+            🔍 Google News ↗
+          </a>
+          <a class="doi-link" href="https://scholar.google.com/scholar?q=${encodeURIComponent(a.title)}" target="_blank" style="text-decoration:none;border-color:var(--ink3);color:var(--ink3)">
+            📚 Scholar ↗
+          </a>
         </div>
       </div>
     </div>`).join('');
@@ -1499,11 +1477,12 @@ function toggleHero() {
   btn.textContent = open ? 'COLLAPSE ↑' : 'EXPAND ↓';
 }
 
-function expandArticle(el, id) {
+function toggleArticle(id) {
   const exp = document.getElementById(`aexp-${id}`);
+  const btn = document.getElementById(`abtn-${id}`);
   if (!exp) return;
-  const isOpen = exp.style.display === 'block';
-  exp.style.display = isOpen ? 'none' : 'block';
+  const open = exp.classList.toggle('open');
+  btn.textContent = open ? 'COLLAPSE ↑' : 'EXPAND ↓';
 }
 
 /* ════════════════════════════════════════════
