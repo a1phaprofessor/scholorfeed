@@ -65,37 +65,20 @@
   --border:rgba(28,20,8,0.13);
 }
 
-/* ── Dark mode ── */
-/* 所有主題深色版：bg 強制深色，ink 強制淺色，accent 保留各主題色調 */
-.dark {
-  --bg:#0F0E0B; --bg2:#191710; --bg3:#232119;
-  --ink:#F0EBE0; --ink2:#B8B0A0; --ink3:#706860;
-  --border:rgba(240,235,224,0.09);
-}
-.dark[data-theme="bauhaus"] {
-  --bg:#0F0E0B; --bg2:#191710; --bg3:#232119;
-  --ink:#F0EBE0; --ink2:#B8B2A2; --ink3:#706860;
-  --border:rgba(240,235,224,0.09);
-}
-.dark[data-theme="brutalist"] {
-  --bg:#0A0A0A; --bg2:#141414; --bg3:#1E1E1E;
-  --ink:#F5F5F5; --ink2:#C0C0C0; --ink3:#787878;
-  --border:rgba(245,245,245,0.10);
-}
-.dark[data-theme="editorial"] {
-  --bg:#0E0E0C; --bg2:#181816; --bg3:#222220;
-  --ink:#F2F2EE; --ink2:#B4B4B0; --ink3:#6A6A66;
-  --border:rgba(242,242,238,0.09);
-}
-.dark[data-theme="mingei"] {
-  --bg:#100C07; --bg2:#1C1510; --bg3:#261E18;
-  --ink:#F2EAE0; --ink2:#C0AE9A; --ink3:#786050;
-  --border:rgba(242,234,224,0.09);
-}
+/* ── Dark mode — 全面黑底白字，覆蓋所有主題 ── */
+.dark,
+.dark[data-theme="bauhaus"],
+.dark[data-theme="brutalist"],
+.dark[data-theme="editorial"],
+.dark[data-theme="mingei"],
 .dark[data-theme="deco"] {
-  --bg:#0F0D06; --bg2:#1A160A; --bg3:#241E10;
-  --ink:#F5F0E0; --ink2:#C8BC98; --ink3:#806A48;
-  --border:rgba(245,240,224,0.09);
+  --bg:#0A0A0A;
+  --bg2:#141414;
+  --bg3:#1E1E1E;
+  --ink:#F0F0F0;
+  --ink2:#C0C0C0;
+  --ink3:#888888;
+  --border:rgba(255,255,255,0.10);
 }
 
 /* ═══════════════════════════════════════════════
@@ -955,15 +938,9 @@ input { font-family: inherit; }
     </div>
   </div>
 
-  <!-- Category strip -->
+  <!-- Category strip — dynamically rendered by renderCategories() -->
   <div class="cat-strip" id="cat-strip">
     <div class="citem active" data-cat="all" onclick="filterCat(this)">▲ 精選焦點</div>
-    <div class="citem" data-cat="finance" onclick="filterCat(this)">💹 財經</div>
-    <div class="citem" data-cat="politics" onclick="filterCat(this)">🏛 政治</div>
-    <div class="citem" data-cat="medicine" onclick="filterCat(this)">🔬 醫學</div>
-    <div class="citem" data-cat="space" onclick="filterCat(this)">🔭 天文</div>
-    <div class="citem" data-cat="tech" onclick="filterCat(this)">⚙️ 科技</div>
-    <div class="citem" data-cat="environment" onclick="filterCat(this)">🌍 環境</div>
     <div class="citem" data-cat="favourites" onclick="filterCat(this)" id="fav-tab">★ 我的最愛</div>
   </div>
 
@@ -985,6 +962,40 @@ input { font-family: inherit; }
 let isDark = false;
 let currentCat = 'all';
 let articlesData = [];
+let categoriesData = [];
+
+function defaultCategories() {
+  return [
+    {id:'finance',  label:'財經'},
+    {id:'politics', label:'政治'},
+    {id:'medicine', label:'醫學'},
+    {id:'space',    label:'天文'},
+    {id:'tech',     label:'科技'},
+    {id:'environment', label:'環境'},
+  ];
+}
+
+// Cat emoji map
+const CAT_EMOJI = {
+  finance:'💹', politics:'🏛', medicine:'🔬', space:'🔭',
+  tech:'⚙️', environment:'🌍', geopolitics:'🌐', ai_policy:'🤖',
+  climate_action:'🌱', energy:'⚡', health_policy:'🏥', economics:'📊',
+  security:'🔒', diplomacy:'🤝', innovation:'💡', society:'👥',
+};
+
+function renderCategories() {
+  const strip = document.getElementById('cat-strip');
+  const favCount = getFavs().length;
+  strip.innerHTML = `
+    <div class="citem ${currentCat==='all'?'active':''}" data-cat="all" onclick="filterCat(this)">▲ 精選焦點</div>
+    ${categoriesData.map(c => `
+      <div class="citem ${currentCat===c.id?'active':''}" data-cat="${c.id}" onclick="filterCat(this)">
+        ${CAT_EMOJI[c.id]||'●'} ${c.label}
+      </div>`).join('')}
+    <div class="citem ${currentCat==='favourites'?'active':''}" data-cat="favourites" onclick="filterCat(this)" id="fav-tab">
+      ★ 我的最愛${favCount>0?' ('+favCount+')':''}
+    </div>`;
+}
 let vocabData = [];
 
 /* ════════════════════════════════════════════
@@ -995,6 +1006,8 @@ window.addEventListener('DOMContentLoaded', () => {
   const key = localStorage.getItem('sf_api_key');
   const theme = localStorage.getItem('sf_theme') || 'bauhaus';
   const dark = localStorage.getItem('sf_dark') === '1';
+  categoriesData = defaultCategories();
+  renderCategories();
 
   setThemeByName(theme);
   if (dark) { isDark = true; document.getElementById('app').classList.add('dark'); }
@@ -1094,10 +1107,14 @@ function toggleFav(e, id) {
   renderArticles();
 }
 function updateFavTab() {
-  const tab = document.getElementById('fav-tab');
-  if (!tab) return;
-  const count = getFavs().length;
-  tab.textContent = count > 0 ? `★ 我的最愛 (${count})` : '★ 我的最愛';
+  if (categoriesData.length > 0) {
+    renderCategories();
+  } else {
+    const tab = document.getElementById('fav-tab');
+    if (!tab) return;
+    const count = getFavs().length;
+    tab.textContent = count > 0 ? `★ 我的最愛 (${count})` : '★ 我的最愛';
+  }
 }
 
 /* ════════════════════════════════════════════
@@ -1161,8 +1178,10 @@ async function loadNews() {
     try {
       const cachedData = JSON.parse(localStorage.getItem('sf_cache_data') || '{}');
       if (cachedData.articles?.length > 0) {
-        articlesData = cachedData.articles;
-        vocabData    = cachedData.vocab || [];
+        articlesData   = cachedData.articles;
+        vocabData      = cachedData.vocab      || [];
+        categoriesData = cachedData.categories || defaultCategories();
+        renderCategories();
         renderArticles();
         renderVocab();
         renderEmail();
@@ -1184,9 +1203,17 @@ async function loadNews() {
 
   const prompt = `你是一位每日學術新聞編輯。今天是 ${today}。
 
-請為我生成今日共 30 篇重要新聞文章，每個分類各 5 篇：財經(finance)、政治(politics)、醫學(medicine)、天文(space)、科技(tech)、環境(environment)。
+第一步：請先判斷今日（${today}）全球最值得關注的新聞分類。
 
-每個分類的 5 篇中，請標記 1–2 篇為 hot:true（重大影響、全球關注度高），其餘 3–4 篇為 hot:false（重要但非頭條）。
+固定基本分類（必須包含）：finance（財經）、politics（政治）、medicine（醫學）、space（天文）、tech（科技）、environment（環境）
+
+動態加入今日趨勢分類（1–3 個，依據當前全球重大事件、熱門議題判斷）：
+例如：若近期有重大地緣政治衝突，加入 geopolitics；若有重大 AI 法規進展，加入 ai_policy；若有重大氣候峰會，加入 climate_action 等。
+分類 ID 用英文小寫底線，label 用繁體中文（2–4字）。
+
+請為每個分類生成 8 篇文章，共 (6 + 動態分類數) × 8 篇。
+每個分類的 8 篇中，請標記 2–3 篇為 hot:true，其餘為 hot:false。
+每個分類的文章應涵蓋多元子題。
 
 文章來源必須來自以下具公信力的媒體（每篇選其中一個）：
 學術期刊：Nature, Science, The Lancet, Cell, NEJM（New England Journal of Medicine）, JAMA, PNAS
@@ -1202,24 +1229,24 @@ async function loadNews() {
 - 來源 source（必須是上方白名單內的媒體名稱）
 - 幾天前 daysAgo（數字）
 - 是否高討論度 hot（true/false）
-- 學術摘要 summary（繁體中文，3句，包含研究方法、發現、意義）
-- 原文節錄 quote（英文，20-35字，像真實原文那樣）
-- 學術討論焦點 discussion（繁體中文，2句）
-- 方法學標籤 pills（陣列，2-4個，如 "RCT", "n = 44,000", "同儕審查", "⚠ 相關性非因果"）
-- DOI或連結描述 doi（如 "Nature Vol.31 (2025)" 或 "The Economist, Mar 2026"）
+- 學術摘要 summary（繁體中文，2句，包含主要發現與意義）
+- 原文節錄 quote（英文，15-25字）
+- 學術討論焦點 discussion（繁體中文，1句）
+- 方法學標籤 pills（陣列，2-3個）
+- DOI或連結描述 doi（如 "Nature Vol.31 (2026)"）
 
 同時請生成今日 5 個英文詞彙，從上述文章中自然出現：
 - word（詞彙）
 - pos（詞性+學科，如 "n. · 藥理"）
 - level（B2/C1/C2）
-- def（繁體中文定義，1-2句）
-- collocations（2-3個常見搭配詞，英文，array）
-- example（英文例句，來自文章語境，20-30字）
-- exampleZh（例句中文翻譯）
+- def（繁體中文定義，1句）
+- collocations（2個常見搭配詞，英文，array）
+- example（英文例句，15-20字）
+- exampleZh（例句中文翻譯，簡短）
 - source（來自哪篇文章的來源名）
 
 只回傳純 JSON 物件，絕對不要有任何前言、說明文字、markdown 語法或程式碼區塊，直接從 { 開始，到 } 結束。格式如下：
-{"articles":[{"id":1,"title":"...","titleZh":"...","category":"medicine","source":"Nature Medicine","daysAgo":1,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["同儕審查","n = 88,000"],"doi":"Nature Medicine Vol.31 (2026)"}],"vocab":[{"word":"agonist","pos":"n. · 藥理","level":"C1","def":"...","collocations":["receptor agonist","partial agonist"],"example":"...","exampleZh":"...","source":"Nature Medicine"}]}`;
+{"categories":[{"id":"finance","label":"財經"},{"id":"politics","label":"政治"},{"id":"medicine","label":"醫學"},{"id":"space","label":"天文"},{"id":"tech","label":"科技"},{"id":"environment","label":"環境"},{"id":"ai_policy","label":"AI治理"}],"articles":[{"id":1,"title":"...","titleZh":"...","category":"medicine","source":"Nature Medicine","daysAgo":1,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["同儕審查","n = 88,000"],"doi":"Nature Medicine Vol.31 (2026)"}],"vocab":[{"word":"agonist","pos":"n. · 藥理","level":"C1","def":"...","collocations":["receptor agonist","partial agonist"],"example":"...","exampleZh":"...","source":"Nature Medicine"}]}`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1272,15 +1299,17 @@ async function loadNews() {
       throw new Error(`JSON 解析失敗 v6。len=${raw.length}, start=${raw.indexOf('{')}, end=${raw.lastIndexOf('}')}, 結尾：${tail}`);
     }
 
-    articlesData = parsed.articles || [];
-    vocabData    = parsed.vocab    || [];
+    articlesData   = parsed.articles   || [];
+    vocabData      = parsed.vocab      || [];
+    categoriesData = parsed.categories || defaultCategories();
 
     // 只有成功拿到文章才存快取，避免存空資料
     if (articlesData.length > 0) {
       localStorage.setItem('sf_cache_date', todayKey);
-      localStorage.setItem('sf_cache_data', JSON.stringify({ articles: articlesData, vocab: vocabData }));
+      localStorage.setItem('sf_cache_data', JSON.stringify({ articles: articlesData, vocab: vocabData, categories: categoriesData }));
     }
 
+    renderCategories();
     renderArticles();
     renderVocab();
     renderEmail();
