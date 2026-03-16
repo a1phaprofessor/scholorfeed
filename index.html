@@ -16,9 +16,9 @@
   --bg:      #F5F0E8;
   --bg2:     #EDE8DC;
   --bg3:     #E3DDD2;
-  --ink:     #1A1714;
-  --ink2:    #4A4540;
-  --ink3:    #8A8278;
+  --ink:     #111009;
+  --ink2:    #2E2A26;
+  --ink3:    #5A554F;
   --accent:  #C8380A;
   --accent2: #1B4F8A;
   --gold:    #C9960C;
@@ -36,31 +36,31 @@
 /* ── Themes ── */
 [data-theme="bauhaus"] {
   --bg:#F5F0E8; --bg2:#EDE8DC; --bg3:#E3DDD2;
-  --ink:#1A1714; --ink2:#4A4540; --ink3:#8A8278;
+  --ink:#111009; --ink2:#2E2A26; --ink3:#5A554F;
   --accent:#C8380A; --accent2:#1B4F8A; --gold:#C9960C;
   --border:rgba(26,23,20,0.13);
 }
 [data-theme="brutalist"] {
   --bg:#FFFFFF; --bg2:#F2F2F2; --bg3:#E5E5E5;
-  --ink:#000000; --ink2:#2A2A2A; --ink3:#888888;
+  --ink:#000000; --ink2:#1A1A1A; --ink3:#555555;
   --accent:#FF0000; --accent2:#0000EE; --gold:#CCAA00;
   --border:rgba(0,0,0,0.18);
 }
 [data-theme="editorial"] {
   --bg:#FAFAF6; --bg2:#F3F3EC; --bg3:#E9E9E0;
-  --ink:#1C1C1A; --ink2:#4C4C48; --ink3:#909088;
+  --ink:#111110; --ink2:#2C2C28; --ink3:#585850;
   --accent:#7A1818; --accent2:#2A4A7C; --gold:#9A7400;
   --border:rgba(28,28,26,0.11);
 }
 [data-theme="mingei"] {
   --bg:#F7F3EC; --bg2:#EEE8DE; --bg3:#E2DAD0;
-  --ink:#2C2018; --ink2:#5C4A38; --ink3:#907A68;
+  --ink:#1A1008; --ink2:#32200E; --ink3:#5A4030;
   --accent:#8A3828; --accent2:#3A6B48; --gold:#B8860B;
   --border:rgba(44,32,24,0.13);
 }
 [data-theme="deco"] {
   --bg:#FAF6ED; --bg2:#F1EAE0; --bg3:#E5DDD0;
-  --ink:#1C1408; --ink2:#3C3020; --ink3:#806A50;
+  --ink:#110C02; --ink2:#281C08; --ink3:#4A3A20;
   --accent:#A07010; --accent2:#1A3A5C; --gold:#C8A420;
   --border:rgba(28,20,8,0.13);
 }
@@ -395,7 +395,7 @@ input { font-family: inherit; }
 .hero-title em { color: var(--accent); font-style: italic; font-weight: 400; }
 .hero-zh {
   font-size: 13px;
-  color: var(--ink2);
+  color: var(--ink);
   line-height: 1.65;
   padding-left: 12px;
   border-left: 2.5px solid var(--accent);
@@ -410,7 +410,7 @@ input { font-family: inherit; }
 .summary-box p {
   font-size: 12.5px;
   line-height: 1.78;
-  color: var(--ink2);
+  color: var(--ink);
 }
 .summary-box strong { color: var(--ink); font-weight: 500; }
 .hero-meta {
@@ -534,7 +534,7 @@ input { font-family: inherit; }
 }
 .ai-zh {
   font-size: 11.5px;
-  color: var(--ink3);
+  color: var(--ink2);
   line-height: 1.5;
   margin-bottom: 6px;
 }
@@ -1107,11 +1107,18 @@ async function loadNews() {
 
 請為我生成今日 8 篇重要新聞文章的內容，涵蓋以下分類：財經(finance)、政治(politics)、醫學(medicine)、天文(space)、科技(tech)、環境(environment)。
 
+文章來源必須來自以下具公信力的媒體（每篇選其中一個）：
+學術期刊：Nature, Science, The Lancet, Cell, NEJM（New England Journal of Medicine）, JAMA, PNAS
+嚴肅新聞：BBC, The Economist, Reuters, Financial Times, The Guardian, The New York Times, Washington Post, AP News
+科學媒體：Scientific American, New Scientist, MIT Technology Review, Ars Technica, Wired
+財經：Wall Street Journal, Bloomberg, Financial Times
+每個分類盡量使用對應的主流媒體，例如醫學用 The Lancet 或 NEJM，天文用 Nature 或 Science，財經用 WSJ 或 Bloomberg。
+
 每篇文章請包含：
-- 真實可信的英文標題（像真正的學術媒體或嚴肅媒體那樣）
+- 真實可信的英文標題（像真正出現在上述媒體的標題那樣）
 - 中文副標題（精確翻譯+補充）
 - 分類 category（英文小寫：finance/politics/medicine/space/tech/environment）
-- 來源 source（如 Nature, Science, WSJ, The Economist, Reuters, Financial Times, The Lancet 等）
+- 來源 source（必須是上方白名單內的媒體名稱）
 - 幾天前 daysAgo（數字）
 - 是否高討論度 hot（true/false）
 - 學術摘要 summary（繁體中文，3句，包含研究方法、發現、意義）
@@ -1310,7 +1317,18 @@ function renderArticles() {
           <div class="exp-lbl">學術討論焦點</div>
           <div class="exp-text">${hero.discussion}</div>
         </div>
-        <a class="doi-link" href="#" onclick="return false">DOI → ${hero.doi}</a>
+        <div class="exp-block">
+          <div class="exp-lbl">來源參考</div>
+          <div class="exp-text" style="font-size:11.5px;color:var(--ink3)">${hero.doi}</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+          <a class="doi-link" href="https://news.google.com/search?q=${encodeURIComponent(hero.title)}" target="_blank" style="text-decoration:none">
+            🔍 Google News 搜尋原文 ↗
+          </a>
+          <a class="doi-link" href="https://scholar.google.com/scholar?q=${encodeURIComponent(hero.title)}" target="_blank" style="text-decoration:none;border-color:var(--ink3);color:var(--ink3)">
+            📚 Google Scholar ↗
+          </a>
+        </div>
       </div>
     </div>`;
 
@@ -1334,7 +1352,15 @@ function renderArticles() {
           </div>
           <div class="exp-quote" style="margin-bottom:8px">"${a.quote}"</div>
           <div class="exp-text" style="margin-bottom:8px;font-size:12px">${a.discussion}</div>
-          <a class="doi-link" href="#" onclick="return false">DOI → ${a.doi}</a>
+          <div style="font-size:11px;color:var(--ink3);margin-bottom:8px">${a.doi}</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <a class="doi-link" href="https://news.google.com/search?q=${encodeURIComponent(a.title+' '+a.source)}" target="_blank" style="text-decoration:none">
+              🔍 Google News 搜尋原文 ↗
+            </a>
+            <a class="doi-link" href="https://scholar.google.com/scholar?q=${encodeURIComponent(a.title)}" target="_blank" style="text-decoration:none;border-color:var(--ink3);color:var(--ink3)">
+              📚 Google Scholar ↗
+            </a>
+          </div>
         </div>
       </div>
     </div>`).join('');
