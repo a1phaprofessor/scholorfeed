@@ -66,10 +66,36 @@
 }
 
 /* ── Dark mode ── */
+/* 所有主題深色版：bg 強制深色，ink 強制淺色，accent 保留各主題色調 */
 .dark {
-  --bg:#0F0E0B; --bg2:#1A1916; --bg3:#232119;
+  --bg:#0F0E0B; --bg2:#191710; --bg3:#232119;
   --ink:#F0EBE0; --ink2:#B8B0A0; --ink3:#706860;
   --border:rgba(240,235,224,0.09);
+}
+.dark[data-theme="bauhaus"] {
+  --bg:#0F0E0B; --bg2:#191710; --bg3:#232119;
+  --ink:#F0EBE0; --ink2:#B8B2A2; --ink3:#706860;
+  --border:rgba(240,235,224,0.09);
+}
+.dark[data-theme="brutalist"] {
+  --bg:#0A0A0A; --bg2:#141414; --bg3:#1E1E1E;
+  --ink:#F5F5F5; --ink2:#C0C0C0; --ink3:#787878;
+  --border:rgba(245,245,245,0.10);
+}
+.dark[data-theme="editorial"] {
+  --bg:#0E0E0C; --bg2:#181816; --bg3:#222220;
+  --ink:#F2F2EE; --ink2:#B4B4B0; --ink3:#6A6A66;
+  --border:rgba(242,242,238,0.09);
+}
+.dark[data-theme="mingei"] {
+  --bg:#100C07; --bg2:#1C1510; --bg3:#261E18;
+  --ink:#F2EAE0; --ink2:#C0AE9A; --ink3:#786050;
+  --border:rgba(242,234,224,0.09);
+}
+.dark[data-theme="deco"] {
+  --bg:#0F0D06; --bg2:#1A160A; --bg3:#241E10;
+  --ink:#F5F0E0; --ink2:#C8BC98; --ink3:#806A48;
+  --border:rgba(245,240,224,0.09);
 }
 
 /* ═══════════════════════════════════════════════
@@ -484,6 +510,32 @@ input { font-family: inherit; }
   font-size: 9.5px;
   color: var(--accent2);
   border-bottom: 1px solid var(--accent2);
+}
+
+/* ═══════════════════════════════════════════════
+   FAVOURITE BUTTON
+═══════════════════════════════════════════════ */
+.fav-btn {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--ink3);
+  font-size: 13px;
+  width: 28px; height: 28px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  transition: color .15s, border-color .15s, transform .15s;
+  line-height: 1;
+}
+.fav-btn:hover { color: var(--gold); border-color: var(--gold); transform: scale(1.15); }
+.fav-btn.active { color: var(--gold); border-color: var(--gold); }
+.fav-empty {
+  padding: 60px 28px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink3);
+  line-height: 2;
 }
 
 /* ═══════════════════════════════════════════════
@@ -905,13 +957,14 @@ input { font-family: inherit; }
 
   <!-- Category strip -->
   <div class="cat-strip" id="cat-strip">
-    <div class="citem active" data-cat="all" onclick="filterCat(this)">全部</div>
+    <div class="citem active" data-cat="all" onclick="filterCat(this)">▲ 精選焦點</div>
     <div class="citem" data-cat="finance" onclick="filterCat(this)">💹 財經</div>
     <div class="citem" data-cat="politics" onclick="filterCat(this)">🏛 政治</div>
     <div class="citem" data-cat="medicine" onclick="filterCat(this)">🔬 醫學</div>
     <div class="citem" data-cat="space" onclick="filterCat(this)">🔭 天文</div>
     <div class="citem" data-cat="tech" onclick="filterCat(this)">⚙️ 科技</div>
     <div class="citem" data-cat="environment" onclick="filterCat(this)">🌍 環境</div>
+    <div class="citem" data-cat="favourites" onclick="filterCat(this)" id="fav-tab">★ 我的最愛</div>
   </div>
 
   <!-- Layout -->
@@ -1021,6 +1074,32 @@ function filterCat(el) {
   renderArticles();
 }
 
+// ── 收藏功能 ──
+function getFavs() {
+  try { return JSON.parse(localStorage.getItem('sf_favs') || '[]'); } catch(e) { return []; }
+}
+function isFav(id) { return getFavs().includes(id); }
+function toggleFav(e, id) {
+  e.stopPropagation();
+  let favs = getFavs();
+  if (favs.includes(id)) {
+    favs = favs.filter(f => f !== id);
+  } else {
+    favs.push(id);
+  }
+  localStorage.setItem('sf_favs', JSON.stringify(favs));
+  // update fav tab count
+  updateFavTab();
+  // re-render to update star states
+  renderArticles();
+}
+function updateFavTab() {
+  const tab = document.getElementById('fav-tab');
+  if (!tab) return;
+  const count = getFavs().length;
+  tab.textContent = count > 0 ? `★ 我的最愛 (${count})` : '★ 我的最愛';
+}
+
 /* ════════════════════════════════════════════
    LOADING UI
 ════════════════════════════════════════════ */
@@ -1105,7 +1184,9 @@ async function loadNews() {
 
   const prompt = `你是一位每日學術新聞編輯。今天是 ${today}。
 
-請為我生成今日 8 篇重要新聞文章的內容，涵蓋以下分類：財經(finance)、政治(politics)、醫學(medicine)、天文(space)、科技(tech)、環境(environment)。
+請為我生成今日共 30 篇重要新聞文章，每個分類各 5 篇：財經(finance)、政治(politics)、醫學(medicine)、天文(space)、科技(tech)、環境(environment)。
+
+每個分類的 5 篇中，請標記 1–2 篇為 hot:true（重大影響、全球關注度高），其餘 3–4 篇為 hot:false（重要但非頭條）。
 
 文章來源必須來自以下具公信力的媒體（每篇選其中一個）：
 學術期刊：Nature, Science, The Lancet, Cell, NEJM（New England Journal of Medicine）, JAMA, PNAS
@@ -1151,7 +1232,7 @@ async function loadNews() {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-5',
-        max_tokens: 8000,
+        max_tokens: 16000,
         system: '你是一個 JSON 生成器。只輸出純 JSON，不加任何說明、markdown、或程式碼區塊。直接從 { 開始輸出。',
         messages: [{ role: 'user', content: prompt }]
       })
@@ -1274,13 +1355,25 @@ const CAT_LABELS = {
 };
 
 function renderArticles() {
-  const filtered = currentCat === 'all'
-    ? articlesData
-    : articlesData.filter(a => a.category === currentCat);
+  updateFavTab();
+  let filtered;
+  if (currentCat === 'all') {
+    filtered = articlesData.filter(a => a.hot);
+  } else if (currentCat === 'favourites') {
+    const favs = getFavs();
+    filtered = articlesData.filter(a => favs.includes(a.id));
+  } else {
+    filtered = articlesData.filter(a => a.category === currentCat);
+  }
 
   if (!filtered.length) {
+    const msg = currentCat === 'favourites'
+      ? '還沒有收藏的文章。<br>點擊文章旁的 ★ 即可收藏。'
+      : currentCat === 'all'
+      ? '今日暫無高討論度文章。'
+      : '此分類今日暫無文章';
     document.getElementById('main-col').innerHTML =
-      `<div style="padding:40px 28px;font-family:var(--mono);font-size:11px;color:var(--ink3)">此分類今日暫無文章</div>`;
+      `<div class="fav-empty">${msg}</div>`;
     return;
   }
 
@@ -1295,6 +1388,7 @@ function renderArticles() {
         </span>
         ${hero.hot ? '<span class="hot-tag">▲ HIGH IMPACT</span>' : ''}
         <span class="src-tag">${hero.source} · ${hero.daysAgo === 0 ? 'Today' : hero.daysAgo + 'd ago'}</span>
+        <button class="fav-btn ${isFav(hero.id) ? 'active' : ''}" onclick="toggleFav(event,${hero.id})" id="fav-hero" title="收藏">★</button>
       </div>
       <h1 class="hero-title">${hero.title}</h1>
       <p class="hero-zh">${hero.titleZh}</p>
@@ -1339,6 +1433,7 @@ function renderArticles() {
         <div class="ai-eyebrow">
           <span class="ai-cat" style="color:${CAT_COLORS[a.category]}">${CAT_LABELS[a.category]||a.category}</span>
           <span class="ai-src">${a.source} · ${a.daysAgo===0?'Today':a.daysAgo+'d'}</span>
+          <button class="fav-btn ${isFav(a.id) ? 'active' : ''}" onclick="toggleFav(event,${a.id})" title="收藏">★</button>
         </div>
         <div class="ai-title">${a.title}</div>
         <div class="ai-zh">${a.titleZh}</div>
