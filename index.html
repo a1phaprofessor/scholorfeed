@@ -849,13 +849,13 @@ input { font-family: inherit; }
       <span class="setup-title">ScholarFeed 設定</span>
     </div>
     <div class="setup-body">
-      <p>輸入你的 <strong>Gemini API Key</strong> 來啟動每日新聞摘要與英文學習功能。<strong>完全免費，不需要信用卡。</strong> API key 僅存在你的瀏覽器本機，不會上傳任何伺服器。</p>
+      <p>輸入你的 <strong>Claude API Key</strong> 來啟動每日新聞摘要與英文學習功能。API key 僅存在你的瀏覽器本機，不會上傳任何伺服器。</p>
       <div class="setup-field">
-        <label class="setup-label">Gemini API Key（免費）</label>
-        <input class="setup-input" type="password" id="api-key-input" placeholder="AIzaSy..." autocomplete="off">
+        <label class="setup-label">Claude API Key</label>
+        <input class="setup-input" type="password" id="api-key-input" placeholder="sk-ant-api03-..." autocomplete="off">
         <div class="setup-hint">
-          前往 <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent2);border-bottom:1px solid">aistudio.google.com/apikey</a> 免費取得，不需信用卡。
-          格式：<code style="font-family:var(--mono);font-size:10px;background:var(--bg3);padding:1px 4px">AIzaSy...</code>
+          前往 <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent2);border-bottom:1px solid">console.anthropic.com</a> 取得 API key。
+          格式：<code style="font-family:var(--mono);font-size:10px;background:var(--bg3);padding:1px 4px">sk-ant-api03-...</code>
         </div>
       </div>
       <div class="setup-field">
@@ -869,7 +869,7 @@ input { font-family: inherit; }
         </select>
       </div>
       <button class="setup-btn" onclick="saveSetup()">▶ 開始使用 ScholarFeed</button>
-      <p class="setup-note">完全免費：Gemini 2.0 Flash 免費方案每天 1,500 次請求，ScholarFeed 每天只用 1 次，永遠不會超額。Key 存於 <code style="font-family:var(--mono);font-size:10px;background:var(--bg3);padding:1px 4px">localStorage</code>，隨時可在設定中更換。</p>
+      <p class="setup-note">新帳號有 $5 免費額度，ScholarFeed 每天約用 $0.03–0.05，可使用 2–3 個月。Key 存於 <code style="font-family:var(--mono);font-size:10px;background:var(--bg3);padding:1px 4px">localStorage</code>，隨時可在設定中更換。</p>
     </div>
   </div>
 </div>
@@ -967,9 +967,9 @@ function updateDate() {
 function saveSetup() {
   const key = document.getElementById('api-key-input').value.trim();
   const theme = document.getElementById('default-theme-select').value;
-  if (!key || !key.startsWith('AIza')) {
+  if (!key || !key.startsWith('sk-ant')) {
     document.getElementById('api-key-input').style.borderColor = 'var(--accent)';
-    document.getElementById('api-key-input').placeholder = '格式應為 AIzaSy... 請重新輸入';
+    document.getElementById('api-key-input').placeholder = '格式應為 sk-ant-api03-... 請重新輸入';
     return;
   }
   localStorage.setItem('sf_api_key', key);
@@ -1132,19 +1132,18 @@ async function loadNews() {
 {"articles":[{"id":1,"title":"...","titleZh":"...","category":"medicine","source":"Nature Medicine","daysAgo":1,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["同儕審查","n = 88,000"],"doi":"Nature Medicine Vol.31 (2026)"}],"vocab":[{"word":"agonist","pos":"n. · 藥理","level":"C1","def":"...","collocations":["receptor agonist","partial agonist"],"example":"...","exampleZh":"...","source":"Nature Medicine"}]}`;
 
   try {
-    const GEMINI_MODEL = 'gemini-2.0-flash-001';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-
-    const res = await fetch(url, {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 4000,
-          responseMimeType: 'application/json',
-        }
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4000,
+        messages: [{ role: 'user', content: prompt }]
       })
     });
 
@@ -1152,15 +1151,14 @@ async function loadNews() {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      const msg = err.error?.message || `HTTP ${res.status}`;
       const errBody = err.error?.message || '';
-      if (res.status === 400 || res.status === 403) throw new Error('KEY_INVALID:' + errBody);
+      if (res.status === 401) throw new Error('KEY_INVALID:' + errBody);
       if (res.status === 429) throw new Error('RATE_LIMIT:' + errBody);
       throw new Error(`HTTP_${res.status}: ${errBody}`);
     }
 
     const data = await res.json();
-    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const raw = data.content?.[0]?.text || '';
 
     // 強健的 JSON 解析：剝 markdown fence、找第一個 { 到最後一個 }
     let parsed = {};
@@ -1200,7 +1198,7 @@ async function loadNews() {
                 :                '無法載入今日新聞';
 
     const body = isKeyInvalid
-      ? `Key 格式或權限有問題，請確認 Key 開頭為 <code>AIzaSy...</code> 且在 AI Studio 中為啟用狀態。`
+      ? `Key 格式或權限有問題，請確認 Key 開頭為 <code>sk-ant-api03-...</code> 且在 console.anthropic.com 中為啟用狀態。`
       : isRateLimit
       ? `<strong>API 請求被限制（429）</strong>，可能原因：Key 剛建立尚未生效、或此地區有使用限制。<br>
          ${errDetail ? `<span style="font-size:11px;color:var(--ink3);font-family:var(--mono)">${errDetail}</span><br>` : ''}
@@ -1213,7 +1211,7 @@ async function loadNews() {
         <p>${body}</p>
         <p style="margin-top:8px;font-size:11px;color:var(--ink3)">
           Key 管理頁面：
-          <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--accent2)">aistudio.google.com/apikey</a>
+          <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent2)">console.anthropic.com</a>
         </p>
         <div style="margin-top:12px;display:flex;gap:8px">
           <button class="retry-btn" id="retry-now-btn" onclick="refresh()">↺ 立即重試</button>
