@@ -1128,7 +1128,7 @@ async function loadNews() {
 - exampleZh（例句中文翻譯）
 - source（來自哪篇文章的來源名）
 
-只回傳純 JSON，不要有任何說明文字、markdown 語法或程式碼區塊，格式如下：
+只回傳純 JSON 物件，絕對不要有任何前言、說明文字、markdown 語法或程式碼區塊（不要有 ```json），直接從 { 開始，到 } 結束。格式如下：
 {"articles":[{"id":1,"title":"...","titleZh":"...","category":"medicine","source":"Nature Medicine","daysAgo":1,"hot":true,"summary":"...","quote":"...","discussion":"...","pills":["同儕審查","n = 88,000"],"doi":"Nature Medicine Vol.31 (2026)"}],"vocab":[{"word":"agonist","pos":"n. · 藥理","level":"C1","def":"...","collocations":["receptor agonist","partial agonist"],"example":"...","exampleZh":"...","source":"Nature Medicine"}]}`;
 
   try {
@@ -1160,17 +1160,23 @@ async function loadNews() {
     const data = await res.json();
     const raw = data.content?.[0]?.text || '';
 
-    // 強健的 JSON 解析：剝 markdown fence、找第一個 { 到最後一個 }
+    // 強健的 JSON 解析：多層容錯
     let parsed = {};
     try {
-      let clean = raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
-      // 如果回傳的不是從 { 開始，找第一個 {
+      let clean = raw.trim();
+      // 剝掉 markdown code block（支援多種格式）
+      clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+      // 找第一個 { 到最後一個 }（避免前後有多餘說明文字）
       const start = clean.indexOf('{');
       const end   = clean.lastIndexOf('}');
-      if (start !== -1 && end !== -1) clean = clean.slice(start, end + 1);
+      if (start !== -1 && end !== -1 && end > start) {
+        clean = clean.slice(start, end + 1);
+      }
       parsed = JSON.parse(clean);
     } catch(parseErr) {
-      throw new Error('JSON 解析失敗，請重試');
+      // 顯示原始回應前100字幫助診斷
+      const preview = raw.substring(0, 120).replace(/</g,'&lt;');
+      throw new Error(`JSON 解析失敗。回應開頭：${preview}`);
     }
 
     articlesData = parsed.articles || [];
